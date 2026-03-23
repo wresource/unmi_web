@@ -328,17 +328,243 @@ server {
 
 ---
 
+## 快速开始
+
+### 环境要求
+
+| 依赖 | 最低版本 | 说明 |
+|------|---------|------|
+| Node.js | 18+ | 推荐 20 LTS |
+| npm | 8+ | 随 Node.js 安装 |
+| PM2 | 5+ | `npm install -g pm2` |
+| Nginx | 1.18+ | 反向代理（可选，开发模式不需要） |
+
+### 1. 克隆项目
+
+```bash
+git clone https://github.com/你的用户名/unmi.io.git
+cd unmi.io
+```
+
+### 2. 安装依赖
+
+```bash
+npm install
+```
+
+### 3. 本地开发
+
+```bash
+npm run dev
+```
+
+浏览器打开 `http://localhost:3000`，首次访问会进入登录页，创建账号即可开始使用。
+
+### 4. 生产部署
+
+#### 4.1 构建
+
+```bash
+npm run build
+```
+
+#### 4.2 配置 PM2
+
+编辑 `ecosystem.config.cjs`，修改以下参数：
+
+```js
+module.exports = {
+  apps: [{
+    name: 'domain-manager',
+    script: '.output/server/index.mjs',
+    cwd: '/你的项目路径',          // ← 改为实际路径
+    env: {
+      PORT: 3001,                  // ← 修改端口
+      HOST: '127.0.0.1',          // ← 0.0.0.0 可外网直接访问
+      NODE_ENV: 'production',
+      DB_PATH: '/你的项目路径/data/domain-manager.db',  // ← 数据库路径
+    },
+  }],
+}
+```
+
+#### 4.3 启动
+
+```bash
+# 启动服务
+pm2 start ecosystem.config.cjs
+
+# 查看状态
+pm2 status
+
+# 查看日志
+pm2 logs domain-manager
+
+# 设置开机自启
+pm2 save
+pm2 startup
+```
+
+### 5. 绑定域名（Nginx 反向代理）
+
+创建 Nginx 配置文件（例如 `/etc/nginx/sites-available/yourdomain.conf`）：
+
+```nginx
+# HTTP → HTTPS 重定向
+server {
+    listen 80;
+    server_name yourdomain.com;  # ← 改为你的域名
+
+    location ^~ /.well-known/acme-challenge/ {
+        allow all;
+        root /你的项目路径;
+    }
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+# HTTPS
+server {
+    listen 443 ssl;
+    http2 on;
+    server_name yourdomain.com;  # ← 改为你的域名
+
+    # SSL 证书路径（Let's Encrypt 示例）
+    ssl_certificate /etc/letsencrypt/live/yourdomain.com/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/yourdomain.com/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers HIGH:!aNULL:!MD5;
+
+    location / {
+        proxy_pass http://127.0.0.1:3001;  # ← 与 PM2 端口一致
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;  # 重要：传递真实 IP
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_cache_bypass $http_upgrade;
+    }
+
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2)$ {
+        proxy_pass http://127.0.0.1:3001;
+        expires 30d;
+        add_header Cache-Control "public, no-transform";
+    }
+
+    # Gzip
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript text/xml application/xml text/javascript image/svg+xml;
+    gzip_min_length 1k;
+    gzip_comp_level 5;
+
+    access_log /var/log/nginx/yourdomain.access.log;
+    error_log /var/log/nginx/yourdomain.error.log;
+}
+```
+
+```bash
+# 启用配置
+ln -s /etc/nginx/sites-available/yourdomain.conf /etc/nginx/sites-enabled/
+
+# 测试配置
+nginx -t
+
+# 重载 Nginx
+nginx -s reload
+```
+
+### 6. SSL 证书（Let's Encrypt）
+
+```bash
+# 安装 certbot
+apt install certbot
+
+# 获取证书（确保 Nginx 已配置 HTTP 并指向项目目录）
+certbot certonly --webroot -w /你的项目路径 -d yourdomain.com
+
+# 证书会自动续期（certbot 配置了 systemd timer）
+```
+
+### 7. 更新部署
+
+```bash
+cd /你的项目路径
+git pull
+npm install
+npm run build
+pm2 restart domain-manager
+```
+
+---
+
+## 配置参考
+
+### 环境变量
+
+| 变量 | 默认值 | 说明 |
+|------|--------|------|
+| `PORT` | `3000` | 服务端口 |
+| `HOST` | `localhost` | 监听地址，`0.0.0.0` 允许外网访问 |
+| `NODE_ENV` | `development` | 生产环境设为 `production` |
+| `DB_PATH` | `./data/domain-manager.db` | SQLite 数据库文件路径 |
+
+### 数据库
+
+数据库文件在首次启动时自动创建，无需手动初始化。默认位于 `data/domain-manager.db`。
+
+**备份数据库：**
+```bash
+cp data/domain-manager.db data/backup-$(date +%Y%m%d).db
+```
+
+**迁移说明：** 程序启动时自动检测表结构并执行必要的迁移，无需手动操作。
+
+### 多语言
+
+系统支持中文和英文，通过页面上的 `EN / 中文` 按钮切换。语言偏好存储在浏览器 localStorage 中。
+
+翻译文件位于 `i18n/zh-CN.json` 和 `i18n/en.json`，可自行扩展其他语言。
+
+---
+
+## 常见问题
+
+**Q: 忘记密码怎么办？**
+A: 密码以 bcrypt 哈希存储，无法恢复。可以删除数据库文件 `data/domain-manager.db` 重新初始化（数据将丢失），或通过 SQLite 工具直接删除 accounts 表中的记录。
+
+**Q: 如何修改默认端口？**
+A: 开发模式修改 `nuxt.config.ts` 中的 devServer 配置；生产模式修改 `ecosystem.config.cjs` 中的 `PORT` 环境变量。
+
+**Q: 能否部署在子路径下（如 /admin/）？**
+A: 当前不支持子路径部署，系统设计为根路径运行。
+
+**Q: WHOIS 查询为什么有时候失败？**
+A: 部分注册局限制查询频率。系统内置了速率限制（每 IP 每 3 秒 1 次）和 5 分钟缓存来保护服务器 IP 不被封禁。
+
+**Q: 如何只部署展示系统不要管理后台？**
+A: 不需要特殊配置。默认首页就是展示系统（`/show`），管理后台需要密码登录才能访问。未创建账号前，管理后台不可用。
+
+---
+
 ## 开发
 
 ```bash
-# 开发模式
+# 开发模式（热重载）
 npm run dev
 
-# 构建
+# 构建生产版本
 npm run build
 
 # 预览构建结果
 npm run preview
+
+# 类型检查
+npx nuxi typecheck
 ```
 
 ---
