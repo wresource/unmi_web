@@ -1,0 +1,169 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-gray-50 text-gray-900 antialiased;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  /* Custom scrollbar */
+  ::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  ::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    @apply bg-gray-300 rounded-full;
+  }
+
+  ::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-400;
+  }
+
+  /* Dark sidebar scrollbar */
+  .dark-scrollbar::-webkit-scrollbar-thumb {
+    @apply bg-gray-600 rounded-full;
+  }
+
+  .dark-scrollbar::-webkit-scrollbar-thumb:hover {
+    @apply bg-gray-500;
+  }
+
+  .dark-scrollbar::-webkit-scrollbar-track {
+    @apply bg-transparent;
+  }
+}
+
+@layer components {
+  /* Page transition */
+  .page-enter-active,
+  .page-leave-active {
+    transition: opacity 0.2s ease, transform 0.2s ease;
+  }
+
+  .page-enter-from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .page-leave-to {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+
+  /* Layout transition */
+  .layout-enter-active,
+  .layout-leave-active {
+    transition: opacity 0.25s ease;
+  }
+
+  .layout-enter-from,
+  .layout-leave-to {
+    opacity: 0;
+  }
+
+  /* Fade transition */
+  .fade-enter-active,
+  .fade-leave-active {
+    transition: opacity 0.2s ease;
+  }
+
+  .fade-enter-from,
+  .fade-leave-to {
+    opacity: 0;
+  }
+
+  /* Slide transition */
+  .slide-enter-active,
+  .slide-leave-active {
+    transition: transform 0.25s ease, opacity 0.25s ease;
+  }
+
+  .slide-enter-from {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  .slide-leave-to {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+
+  /* Toast transitions */
+  .toast-enter-active {
+    transition: transform 0.3s ease, opacity 0.3s ease;
+  }
+
+  .toast-leave-active {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .toast-enter-from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  .toast-leave-to {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+
+  /* Modal transitions */
+  .modal-enter-active,
+  .modal-leave-active {
+    transition: opacity 0.2s ease;
+  }
+
+  .modal-enter-from,
+  .modal-leave-to {
+    opacity: 0;
+  }
+
+  .modal-enter-active .modal-content,
+  .modal-leave-active .modal-content {
+    transition: transform 0.2s ease, opacity 0.2s ease;
+  }
+
+  .modal-enter-from .modal-content {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  .modal-leave-to .modal-content {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+
+  /* Card hover effect */
+  .card-hover {
+    @apply transition-all duration-200 ease-in-out;
+  }
+
+  .card-hover:hover {
+    @apply shadow-lg -translate-y-0.5;
+  }
+
+  /* Input focus ring */
+  .input-focus {
+    @apply transition-all duration-150 outline-none ring-0 border-gray-300;
+  }
+
+  .input-focus:focus {
+    @apply ring-2 ring-blue-500/20 border-blue-500;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
