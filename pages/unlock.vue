@@ -3,7 +3,7 @@ definePageMeta({ layout: 'auth' })
 
 const authStore = useAuthStore()
 const { t } = useI18n()
-const { getDeviceId, getDeviceName, getFingerprint } = useDeviceAuth()
+const { getOrCreateDevice, signChallenge, getDeviceId, getDeviceName } = useDeviceAuth()
 
 const mode = ref<'login' | 'create'>('login')
 const password = ref('')
@@ -60,8 +60,27 @@ async function handleLogin() {
   }
   try {
     savedPassword.value = password.value
-    const deviceId = getDeviceId()
-    const result = await authStore.unlock(password.value, undefined, undefined, deviceId)
+
+    // Try cryptographic device verification
+    let deviceId: string | undefined
+    let deviceSignature: string | undefined
+
+    const device = await getOrCreateDevice()
+    if (device) {
+      deviceId = device.deviceId
+      // Request challenge from server
+      try {
+        const challengeResp = await $fetch<any>('/api/auth/device/challenge', {
+          method: 'POST',
+          body: { deviceId },
+        })
+        if (challengeResp.found && challengeResp.challenge) {
+          deviceSignature = await signChallenge(challengeResp.challenge) || undefined
+        }
+      } catch {}
+    }
+
+    const result = await authStore.unlock(password.value, undefined, undefined, deviceId, deviceSignature)
     if (result?.requiresTOTP) {
       return
     }
@@ -149,12 +168,15 @@ async function handleCreate() {
  */
 async function autoRegisterDevice() {
   try {
-    const deviceId = getDeviceId()
-    const deviceName = getDeviceName()
-    const fingerprint = getFingerprint()
+    const device = await getOrCreateDevice()
+    if (!device) return
+
     await $fetch('/api/auth/device/register', {
       method: 'POST',
-      body: { deviceId, deviceName, deviceFingerprint: fingerprint },
+      body: {
+        publicKeyJwk: device.publicKeyJwk,
+        deviceName: getDeviceName(),
+      },
     })
   } catch {
     // Silent fail — device registration is a nice-to-have

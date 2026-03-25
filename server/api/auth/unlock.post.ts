@@ -3,10 +3,11 @@ import bcrypt from 'bcryptjs'
 import { useDatabase } from '~/server/database'
 import { registerAccountKey } from '~/server/utils/keystore'
 import { verifyTOTP, verifyBackupCode } from '~/server/utils/totp'
+import { consumeChallenge, verifyDeviceSignature } from '~/server/utils/device-crypto'
 
 export default defineEventHandler(async (event) => {
   const body = await readBody(event)
-  const { password, deviceId, totpCode, backupCode } = body || {}
+  const { password, deviceId, deviceSignature, totpCode, backupCode } = body || {}
 
   if (!password || typeof password !== 'string') {
     throw createError({ statusCode: 400, statusMessage: '请输入密码' })
@@ -29,24 +30,37 @@ export default defineEventHandler(async (event) => {
 
   for (const account of accounts) {
     if (bcrypt.compareSync(password, account.password_hash)) {
-      // Check if device auth is enabled and device is authorized
-      if (account.device_auth_enabled && deviceId) {
+      // Check device auth with cryptographic verification
+      let deviceVerified = false
+      if (account.device_auth_enabled && deviceId && deviceSignature) {
         const device = db.prepare(
-          'SELECT id FROM device_auth WHERE account_id = ? AND device_id = ?'
-        ).get(account.id, deviceId) as { id: number } | undefined
+          'SELECT device_fingerprint FROM device_auth WHERE account_id = ? AND device_id = ?'
+        ).get(account.id, deviceId) as { device_fingerprint: string } | undefined
 
-        if (device) {
-          // Authorized device found - update last_used_at and skip TOTP
-          db.prepare(
-            "UPDATE device_auth SET last_used_at = datetime('now') WHERE account_id = ? AND device_id = ?"
-          ).run(account.id, deviceId)
+        if (device?.device_fingerprint) {
+          try {
+            const publicKeyJwk = JSON.parse(device.device_fingerprint)
+            const challenge = consumeChallenge(deviceId)
+            if (challenge) {
+              const valid = verifyDeviceSignature(publicKeyJwk, challenge, deviceSignature)
+              if (valid) {
+                deviceVerified = true
+                // Update last_used_at
+                db.prepare('UPDATE device_auth SET last_used_at = datetime(\'now\') WHERE account_id = ? AND device_id = ?')
+                  .run(account.id, deviceId)
+              }
+            }
+          } catch {}
+        }
+      }
 
-          registerAccountKey(account.id, account.password_hash)
-          return {
-            success: true,
-            accountId: account.id,
-            accountName: account.name,
-          }
+      if (deviceVerified) {
+        // Cryptographically verified device — skip TOTP
+        registerAccountKey(account.id, account.password_hash)
+        return {
+          success: true,
+          accountId: account.id,
+          accountName: account.name,
         }
       }
 

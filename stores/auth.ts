@@ -56,13 +56,14 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  async function unlock(password: string, totpCode?: string, backupCode?: string, deviceId?: string) {
+  async function unlock(password: string, totpCode?: string, backupCode?: string, deviceId?: string, deviceSignature?: string) {
     try {
       loading.value = true
       const body: any = { password }
       if (totpCode) body.totpCode = totpCode
       if (backupCode) body.backupCode = backupCode
       if (deviceId) body.deviceId = deviceId
+      if (deviceSignature) body.deviceSignature = deviceSignature
 
       const data = await $fetch<any>('/api/auth/unlock', { method: 'POST', body })
 

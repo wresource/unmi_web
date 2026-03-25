@@ -155,10 +155,18 @@ async function fetchDevices() {
 async function addCurrentDevice() {
   try {
     addDeviceLoading.value = true
-    const { getDeviceId, getDeviceName, getFingerprint } = useDeviceAuth()
+    const { getOrCreateDevice, getDeviceName } = useDeviceAuth()
+    const device = await getOrCreateDevice()
+    if (!device) {
+      toast.error('Device crypto not supported')
+      return
+    }
     await $fetch('/api/auth/device/register', {
       method: 'POST',
-      body: { deviceId: getDeviceId(), deviceName: getDeviceName(), deviceFingerprint: getFingerprint() },
+      body: {
+        publicKeyJwk: device.publicKeyJwk,
+        deviceName: getDeviceName(),
+      },
     })
     toast.success(t('security.device.added'))
     await fetchDevices()
