@@ -10,12 +10,13 @@ export default defineEventHandler(async (event) => {
   ).all() as { credential_id: string }[]
 
   if (credentials.length === 0) {
-    throw createError({ statusCode: 400, statusMessage: '没有已注册的通行密钥' })
+    throw createError({ statusCode: 400, statusMessage: 'No passkeys registered' })
   }
 
-  const options = await createAuthenticationOptions(
-    credentials.map(c => c.credential_id),
-  )
+  // Don't pass allowCredentials — let the browser discover credentials
+  // from iCloud Keychain, Windows Hello, etc. This enables cross-device
+  // passkey usage (e.g., registered on Mac, used on iPhone via iCloud sync)
+  const options = await createAuthenticationOptions()
 
   return options
 })

@@ -54,7 +54,8 @@ export async function createRegistrationOptions(
     attestationType: 'none',
     excludeCredentials: existingCredentialIds.map(id => ({ id })),
     authenticatorSelection: {
-      residentKey: 'preferred',
+      residentKey: 'required',
+      requireResidentKey: true,
       userVerification: 'preferred',
     },
   })
@@ -80,13 +81,18 @@ export async function verifyRegistration(
   return verification
 }
 
-export async function createAuthenticationOptions(credentialIds: string[]) {
+export async function createAuthenticationOptions(credentialIds?: string[]) {
   const config = getConfig()
-  const options = await generateAuthenticationOptions({
+  const opts: any = {
     rpID: config.rpID,
-    allowCredentials: credentialIds.map(id => ({ id })),
     userVerification: 'preferred',
-  })
+  }
+  // If credential IDs provided AND non-empty, use them; otherwise let browser discover
+  // Empty allowCredentials enables discoverable credential (iCloud Keychain, etc.)
+  if (credentialIds && credentialIds.length > 0) {
+    opts.allowCredentials = credentialIds.map(id => ({ id }))
+  }
+  const options = await generateAuthenticationOptions(opts)
   storeChallenge(`auth:global`, options.challenge)
   return options
 }
