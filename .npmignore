@@ -1,0 +1,39 @@
+# Dev/build files
+.nuxt/
+.output/
+node_modules/
+
+# Database
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Config with secrets
+ecosystem.config.cjs
+.env
+.env.*
+
+# IDE
+.vscode/
+.idea/
+
+# Dev docs
+conversation.md
+reqiured.md
+show.md
+
+# Claude
+.claude/
+
+# Git
+.git/
+.gitignore
+
+# Logs
+*.log
+logs/
+
+# Temp
+tmp/
+.tmp/

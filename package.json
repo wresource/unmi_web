@@ -1,15 +1,51 @@
 {
-  "name": "domain-manager",
-  "version": "1.0.0",
-  "private": true,
+  "name": "unmi-domain-manager",
+  "version": "2.1.0",
+  "description": "Full-featured domain asset management & showcase platform with WHOIS, appraisal, drop-catch, and 2FA security. Built with Nuxt 3 + SQLite.",
   "type": "module",
+  "license": "MIT",
+  "author": {
+    "name": "wresource",
+    "url": "https://github.com/wresource"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/wresource/unmi_web.git"
+  },
+  "homepage": "https://beta.unmi.io",
+  "bugs": {
+    "url": "https://github.com/wresource/unmi_web/issues"
+  },
+  "keywords": [
+    "domain",
+    "domain-manager",
+    "domain-portfolio",
+    "whois",
+    "rdap",
+    "domain-appraisal",
+    "dropcatch",
+    "domain-auction",
+    "nuxt3",
+    "sqlite",
+    "tailwindcss",
+    "webauthn",
+    "passkey",
+    "totp",
+    "2fa",
+    "i18n",
+    "domain-showcase"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "build": "nuxt build",
     "dev": "nuxt dev",
     "generate": "nuxt generate",
     "preview": "nuxt preview",
     "postinstall": "nuxt prepare",
-    "start": "node .output/server/index.mjs"
+    "start": "node .output/server/index.mjs",
+    "release": "bash scripts/release.sh"
   },
   "dependencies": {
     "@simplewebauthn/browser": "^13.3.0",

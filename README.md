@@ -1,11 +1,16 @@
 # UNMI.IO — Domain Asset Management & Showcase Platform
 
 <p align="center">
+  <img src="https://img.shields.io/npm/v/unmi-domain-manager?style=flat-square&color=red" alt="npm" />
   <img src="https://img.shields.io/badge/Nuxt-3.14-00DC82?style=flat-square&logo=nuxt.js" alt="Nuxt 3" />
   <img src="https://img.shields.io/badge/SQLite-WAL-003B57?style=flat-square&logo=sqlite" alt="SQLite" />
   <img src="https://img.shields.io/badge/Tailwind-CSS-38B2AC?style=flat-square&logo=tailwindcss" alt="Tailwind" />
   <img src="https://img.shields.io/badge/TypeScript-5.6-3178C6?style=flat-square&logo=typescript" alt="TypeScript" />
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="MIT" />
+</p>
+
+<p align="center">
+  <b>English</b> | <a href="./README.zh-CN.md">中文</a>
 </p>
 
 A full-featured, local-first domain portfolio management system with public showcase, domain drop-catching, and enterprise-grade security. Built with **Nuxt 3 + SQLite + Tailwind CSS**.
@@ -85,9 +90,13 @@ A full-featured, local-first domain portfolio management system with public show
 - PM2 (`npm install -g pm2`)
 - Nginx (optional, for reverse proxy)
 
-### 1. Clone & Install
+### 1. Install
 
 ```bash
+# Via npm
+npm install unmi-domain-manager
+
+# Or clone repository
 git clone https://github.com/wresource/unmi_web.git
 cd unmi_web
 npm install
