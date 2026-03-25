@@ -833,7 +833,15 @@
     "currentBid": "Current Bid",
     "sourceDropcatch": "DropCatch",
     "sourceRdap": "RDAP",
-    "auctionEnds": "Auction Ends"
+    "auctionEnds": "Auction Ends",
+    "privateSeller": "Private Seller",
+    "preRelease": "Pre-Release",
+    "dropped": "Dropped",
+    "ended": "Ended",
+    "apiUnavailable": "API Not Configured",
+    "apiUnavailableDesc": "Please set DropCatch API keys in environment variables",
+    "apiSignupLink": "Sign up for DropCatch API",
+    "clickForWhois": "Click for WHOIS info"
   },
 
   "daysRemaining": {

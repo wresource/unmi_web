@@ -833,7 +833,15 @@
     "currentBid": "当前出价",
     "sourceDropcatch": "DropCatch",
     "sourceRdap": "RDAP",
-    "auctionEnds": "结束时间"
+    "auctionEnds": "结束时间",
+    "privateSeller": "私人卖家",
+    "preRelease": "预释放",
+    "dropped": "已删除",
+    "ended": "已结束",
+    "apiUnavailable": "API 未配置",
+    "apiUnavailableDesc": "请在环境变量中设置 DropCatch API 密钥",
+    "apiSignupLink": "前往 DropCatch 申请 API",
+    "clickForWhois": "点击查看 WHOIS 信息"
   },
 
   "daysRemaining": {

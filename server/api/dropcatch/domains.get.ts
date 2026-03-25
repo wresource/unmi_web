@@ -1,12 +1,16 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { useDatabase } from '~/server/database'
-import { needsRefresh, fetchRealDropDomains, markRefreshed } from '~/server/utils/dropcatch'
+import { needsRefresh, fetchDropDomains, markRefreshed } from '~/server/utils/dropcatch'
+import { isDropCatchConfigured } from '~/server/utils/dropcatch-api'
 
 export default defineEventHandler(async (event) => {
+  // Check if API is configured
+  const configured = isDropCatchConfigured()
+
   // Auto-refresh once per day — runs in background, does NOT block this response
-  if (needsRefresh()) {
+  if (configured && needsRefresh()) {
     markRefreshed() // Mark immediately to prevent concurrent triggers
-    fetchRealDropDomains({ tlds: ['.com', '.net', '.org'], maxPerTld: 2000 })
+    fetchDropDomains({ tlds: ['.com', '.net', '.org'], maxPerTld: 2000 })
       .then(count => console.log(`[dropcatch] Auto-refresh complete: ${count} domains`))
       .catch(err => console.warn('[dropcatch] Auto-refresh failed:', err.message))
   }
@@ -20,22 +24,17 @@ export default defineEventHandler(async (event) => {
   const maxLength = query.maxLength ? parseInt(query.maxLength as string) : 0
   const maxPrice = query.maxPrice ? parseInt(query.maxPrice as string) : 0
   const status = (query.status as string) || ''
-  const source = (query.source as string) || ''
   const dropWithin = query.dropWithin !== undefined ? parseInt(query.dropWithin as string) : -1
   const sortBy = (query.sortBy as string) || 'drop_date'
   const sortOrder = (query.sortOrder as string)?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
   const page = Math.max(1, parseInt(query.page as string) || 1)
   const pageSize = Math.min(200, Math.max(1, parseInt(query.pageSize as string) || 50))
 
-  const allowedSort = ['domain_name', 'drop_date', 'estimated_value', 'domain_length', 'created_at']
+  const allowedSort = ['domain_name', 'drop_date', 'estimated_value', 'domain_length', 'auction_price', 'created_at']
   const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'drop_date'
 
   const conditions: string[] = []
   const params: any[] = []
-
-  // Pure letters only — always enforced
-  conditions.push('is_pure_letters = 1')
-  conditions.push('domain_length <= 5')
 
   if (search) {
     conditions.push('domain_name LIKE ?')
@@ -54,22 +53,12 @@ export default defineEventHandler(async (event) => {
     params.push(maxLength)
   }
   if (maxPrice > 0) {
-    conditions.push('estimated_value <= ?')
+    conditions.push('auction_price <= ?')
     params.push(maxPrice)
   }
   if (status) {
     conditions.push('status = ?')
     params.push(status)
-  }
-  if (source) {
-    const sources = source.split(',').map((s: string) => s.trim()).filter(Boolean)
-    if (sources.length === 1) {
-      conditions.push('source = ?')
-      params.push(sources[0])
-    } else if (sources.length > 1) {
-      conditions.push(`source IN (${sources.map(() => '?').join(',')})`)
-      params.push(...sources)
-    }
   }
 
   // Drop within N days filter
@@ -77,7 +66,6 @@ export default defineEventHandler(async (event) => {
     const now = new Date()
     const futureDate = new Date(now.getTime() + dropWithin * 86400000)
     if (dropWithin === 0) {
-      // Within 24 hours (today + tonight)
       const tomorrow = new Date(now.getTime() + 86400000)
       conditions.push("drop_date != ''")
       conditions.push("drop_date <= ?")
@@ -101,19 +89,8 @@ export default defineEventHandler(async (event) => {
     LIMIT ? OFFSET ?
   `).all(...params, pageSize, offset) as any[]
 
-  // Calculate days until drop
-  const now = new Date()
-  const enriched = data.map(d => {
-    let daysUntilDrop: number | null = null
-    if (d.drop_date) {
-      const dropDate = new Date(d.drop_date)
-      daysUntilDrop = Math.ceil((dropDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
-    }
-    return { ...d, days_until_drop: daysUntilDrop }
-  })
-
   // Get distinct TLDs for filter dropdown
-  const tlds = db.prepare('SELECT DISTINCT tld FROM drop_domains WHERE is_pure_letters = 1 AND domain_length <= 5 ORDER BY tld').all() as { tld: string }[]
+  const tlds = db.prepare('SELECT DISTINCT tld FROM drop_domains ORDER BY tld').all() as { tld: string }[]
 
   // Get last refresh time
   const refreshRow = db.prepare(
@@ -121,11 +98,12 @@ export default defineEventHandler(async (event) => {
   ).get() as { setting_value: string } | undefined
 
   return {
-    data: enriched,
+    data,
     total,
     page,
     pageSize,
     tlds: tlds.map(t => t.tld),
     lastRefresh: refreshRow?.setting_value || null,
+    configured,
   }
 })

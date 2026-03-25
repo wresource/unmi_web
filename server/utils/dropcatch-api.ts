@@ -66,83 +66,80 @@ export async function fetchDropCatchAuctions(options?: {
   const tlds = options?.tlds || ['com', 'net', 'org']
   const maxPerTld = options?.maxPerTld || 2000
   const allResults: DropCatchAuction[] = []
+  const seen = new Set<string>()
 
-  // Fetch all three auction types
-  const auctionTypes = ['Dropped', 'PrivateSeller', 'PreRelease']
+  // Strategy: fetch ALL types together, paginate through time windows
+  // Use EndTime.Max to get auctions ending within 7 days (most relevant)
+  const now = new Date()
+  const timeWindows = [
+    new Date(now.getTime() + 1 * 86400000),   // next 1 day
+    new Date(now.getTime() + 3 * 86400000),   // next 3 days
+    new Date(now.getTime() + 7 * 86400000),   // next 7 days
+    new Date(now.getTime() + 30 * 86400000),  // next 30 days
+  ]
 
-  for (const auctionType of auctionTypes) {
-    try {
-      let nextCursor: string | undefined
-      let pagesFetched = 0
-      const maxPages = 30 // Safety limit: 30 pages × 100 = 3000 items per type
+  for (const windowEnd of timeWindows) {
+    // Fetch all types in this time window
+    for (const auctionType of ['Dropped', 'PrivateSeller', 'PreRelease']) {
+      try {
+        let nextCursor: string | undefined
+        let pagesFetched = 0
 
-      while (pagesFetched < maxPages) {
-        const params = new URLSearchParams({
-          size: '100',
-          showAllActive: 'true',
-        })
-        // Filter by type
-        params.append('Types', auctionType)
-
-        for (const tld of tlds) params.append('Tlds', tld)
-        if (nextCursor) params.set('next', nextCursor)
-
-        const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: 'application/json',
-          },
-          signal: AbortSignal.timeout(15000),
-        })
-
-        if (!res.ok) {
-          console.warn(`[dropcatch-api] Auctions ${auctionType} HTTP ${res.status}`)
-          break
-        }
-
-        const data = await res.json() as any
-        const items = data.items || []
-        if (items.length === 0) break
-
-        for (const item of items) {
-          const name = (item.name || '').toLowerCase()
-          if (!name.includes('.')) continue
-          const sld = name.split('.')[0]
-          const tld = '.' + name.split('.').slice(1).join('.')
-
-          // Filter: pure letters only, 1-5 chars
-          if (!/^[a-z]+$/.test(sld)) continue
-          if (sld.length > 5) continue
-
-          // Check per-TLD limit
-          const tldCount = allResults.filter(r => r.tld === tld).length
-          if (tldCount >= maxPerTld) continue
-
-          allResults.push({
-            domain_name: name,
-            tld,
-            auction_price: item.highBid || 0,
-            end_time: item.endTime || '',
-            bidders: item.numberOfBidders || 0,
-            auction_type: auctionType,
-            auction_id: item.auctionId || 0,
+        while (pagesFetched < 20) {
+          const params = new URLSearchParams({
+            size: '100',
+            showAllActive: 'true',
           })
+          params.append('Types', auctionType)
+          params.set('EndTime.Max', windowEnd.toISOString())
+          for (const tld of tlds) params.append('Tlds', tld)
+          if (nextCursor) params.set('next', nextCursor)
+
+          const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+            signal: AbortSignal.timeout(15000),
+          })
+
+          if (!res.ok) break
+
+          const data = await res.json() as any
+          const items = data.items || []
+          if (items.length === 0) break
+
+          for (const item of items) {
+            const name = (item.name || '').toLowerCase()
+            if (!name.includes('.') || seen.has(name)) continue
+            const sld = name.split('.')[0]
+            const tld = '.' + name.split('.').slice(1).join('.')
+
+            if (!/^[a-z]+$/.test(sld) || sld.length > 5) continue
+
+            seen.add(name)
+            allResults.push({
+              domain_name: name,
+              tld,
+              auction_price: item.highBid || 0,
+              end_time: item.endTime || '',
+              bidders: item.numberOfBidders || 0,
+              auction_type: item.type || auctionType,
+              auction_id: item.auctionId || 0,
+            })
+          }
+
+          nextCursor = data.next
+          if (!nextCursor) break
+          pagesFetched++
+          await new Promise(r => setTimeout(r, 100))
         }
-
-        nextCursor = data.next
-        if (!nextCursor) break
-        pagesFetched++
-
-        await new Promise(r => setTimeout(r, 150))
+      } catch (err) {
+        console.warn(`[dropcatch-api] ${auctionType} window failed:`, (err as Error).message)
       }
-
-      console.log(`[dropcatch-api] ${auctionType}: fetched, total so far: ${allResults.length}`)
-    } catch (err) {
-      console.warn(`[dropcatch-api] ${auctionType} failed:`, (err as Error).message)
     }
   }
 
-  // Sort all results by end_time ascending (ending soonest first)
+  console.log(`[dropcatch-api] Total fetched: ${allResults.length} domains`)
+
+  // Sort by end_time ascending
   allResults.sort((a, b) => {
     if (!a.end_time) return 1
     if (!b.end_time) return -1
