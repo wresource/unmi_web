@@ -136,6 +136,17 @@ function formatPrice(price: number | null | undefined) {
   return `\u00A5${price.toFixed(2)}`
 }
 
+// Daily cost calculation
+const dailyCost = computed(() => {
+  if (!domain.value) return null
+  const regDate = domain.value.registration_date
+  const totalCost = (domain.value.purchase_price || 0) + (domain.value.hold_cost || 0)
+  if (!regDate || totalCost === 0) return null
+
+  const days = Math.max(1, Math.ceil((Date.now() - new Date(regDate).getTime()) / 86400000))
+  return (totalCost / days).toFixed(2)
+})
+
 onMounted(() => {
   fetchDomain()
 })
@@ -285,11 +296,17 @@ onMounted(() => {
           </dl>
 
           <!-- Total cost summary -->
-          <div class="mt-6 pt-4 border-t border-gray-100">
+          <div class="mt-6 pt-4 border-t border-gray-100 space-y-3">
             <div class="flex justify-between">
               <dt class="text-sm font-medium text-gray-700">{{ t('domains.detail.totalInvestment') }}</dt>
               <dd class="text-sm font-bold text-primary-600">
                 {{ formatPrice((domain.purchase_price || 0) + (domain.hold_cost || 0)) }}
+              </dd>
+            </div>
+            <div v-if="dailyCost" class="flex justify-between">
+              <dt class="text-sm font-medium text-gray-700">{{ t('domains.detail.dailyCost') }}</dt>
+              <dd class="text-sm font-bold text-orange-600">
+                ¥{{ dailyCost }}/{{ t('domains.detail.day') }}
               </dd>
             </div>
           </div>

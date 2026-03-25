@@ -27,13 +27,6 @@ const total = ref(0)
 const availableTlds = ref<string[]>([])
 const lastRefresh = ref<string | null>(null)
 
-// WHOIS modal
-const showWhoisModal = ref(false)
-const whoisDomain = ref('')
-const whoisLoading = ref(false)
-const whoisData = ref<any>(null)
-const whoisError = ref('')
-
 // Fetch domains
 async function fetchDomains() {
   loading.value = true
@@ -169,25 +162,9 @@ function urgencyClass(d: any): string {
   return 'text-gray-500'
 }
 
-// WHOIS popup
-async function showWhois(domainName: string) {
-  whoisDomain.value = domainName
-  whoisData.value = null
-  whoisError.value = ''
-  whoisLoading.value = true
-  showWhoisModal.value = true
-
-  try {
-    const res = await $fetch<any>('/api/whois/query', {
-      method: 'POST',
-      body: { domain: domainName },
-    })
-    whoisData.value = res
-  } catch (err: any) {
-    whoisError.value = err?.data?.statusMessage || err?.message || 'WHOIS query failed'
-  } finally {
-    whoisLoading.value = false
-  }
+// Navigate to WHOIS page
+function goToWhois(domainName: string) {
+  window.open(`/whois?domain=${encodeURIComponent(domainName)}`, '_blank')
 }
 
 // Copy domain
@@ -248,50 +225,89 @@ onMounted(async () => {
         </div>
       </div>
 
-      <!-- Filters bar — horizontal, compact, mobile-friendly -->
+      <!-- Filters bar — compact responsive layout -->
       <div class="space-y-2">
-        <!-- Row 1: Status tabs -->
+        <!-- Row 1: Search + Status tabs + Time filter -->
         <div class="flex flex-wrap items-center gap-1.5">
-          <button
-            :class="['px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors', !statusFilter ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
-            @click="setStatusFilter('')"
-          >
-            {{ t('dropcatch.allTypes') }}
-          </button>
-          <button
-            :class="['px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors', statusFilter === 'dropped' ? 'bg-red-600 text-white border-red-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
-            @click="setStatusFilter('dropped')"
-          >
-            {{ t('dropcatch.dropped') }}
-          </button>
-          <button
-            :class="['px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors', statusFilter === 'private_seller' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
-            @click="setStatusFilter('private_seller')"
-          >
-            {{ t('dropcatch.privateSeller') }}
-          </button>
-          <button
-            :class="['px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors', statusFilter === 'pre_release' ? 'bg-amber-600 text-white border-amber-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
-            @click="setStatusFilter('pre_release')"
-          >
-            {{ t('dropcatch.preRelease') }}
-          </button>
+          <!-- Search (full width on mobile, auto on desktop) -->
+          <div class="w-full sm:w-auto sm:flex-none order-first sm:order-none">
+            <input
+              v-model="search"
+              type="text"
+              :placeholder="t('dropcatch.searchPlaceholder')"
+              class="w-full sm:w-40 lg:w-48 h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white"
+            />
+          </div>
 
-          <span class="hidden sm:inline text-gray-300 mx-1">|</span>
+          <!-- Status tabs -->
+          <div class="flex items-center gap-1 overflow-x-auto sm:overflow-visible">
+            <button
+              :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap', !statusFilter ? 'bg-blue-600 text-white border-blue-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
+              @click="setStatusFilter('')"
+            >
+              {{ t('dropcatch.allTypes') }}
+            </button>
+            <button
+              :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap', statusFilter === 'dropped' ? 'bg-red-600 text-white border-red-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
+              @click="setStatusFilter('dropped')"
+            >
+              {{ t('dropcatch.dropped') }}
+            </button>
+            <button
+              :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap', statusFilter === 'private_seller' ? 'bg-purple-600 text-white border-purple-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
+              @click="setStatusFilter('private_seller')"
+            >
+              {{ t('dropcatch.privateSeller') }}
+            </button>
+            <button
+              :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors whitespace-nowrap', statusFilter === 'pre_release' ? 'bg-amber-600 text-white border-amber-600' : 'text-gray-600 border-gray-200 hover:bg-gray-50']"
+              @click="setStatusFilter('pre_release')"
+            >
+              {{ t('dropcatch.preRelease') }}
+            </button>
+          </div>
 
-          <!-- Length buttons -->
-          <button
-            v-for="len in [1, 2, 3, 4, 5]"
-            :key="len"
-            :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors', lengthFilter === len ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
-            @click="setLengthFilter(len)"
-          >
-            {{ t(`dropcatch.chars${len}`) }}
-          </button>
+          <span class="hidden lg:inline text-gray-300 mx-0.5">|</span>
+
+          <!-- Time filter -->
+          <div class="flex items-center gap-1">
+            <button
+              :class="['px-2 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 0 ? 'bg-red-50 text-red-700 border-red-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+              @click="setDropWithin(0)"
+            >
+              {{ t('dropcatch.today') }}
+            </button>
+            <button
+              :class="['px-2 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 3 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+              @click="setDropWithin(3)"
+            >
+              3d
+            </button>
+            <button
+              :class="['px-2 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 7 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+              @click="setDropWithin(7)"
+            >
+              7d
+            </button>
+          </div>
         </div>
 
-        <!-- Row 2: TLD + Time + Search + Sort -->
+        <!-- Row 2: Length buttons + TLD + Sort -->
         <div class="flex flex-wrap items-center gap-1.5">
+          <!-- Length buttons -->
+          <div class="flex items-center gap-1">
+            <button
+              v-for="len in [1, 2, 3, 4, 5]"
+              :key="len"
+              :class="['px-2 py-1.5 text-xs font-medium rounded-lg border transition-colors', lengthFilter === len ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+              @click="setLengthFilter(len)"
+            >
+              {{ t(`dropcatch.chars${len}`) }}
+            </button>
+          </div>
+
+          <span class="hidden sm:inline text-gray-300 mx-0.5">|</span>
+
           <!-- TLD -->
           <select
             v-model="selectedTld"
@@ -301,55 +317,27 @@ onMounted(async () => {
             <option v-for="tldOpt in availableTlds" :key="tldOpt" :value="tldOpt">{{ tldOpt }}</option>
           </select>
 
-          <!-- Time filter -->
-          <button
-            :class="['px-2.5 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 0 ? 'bg-red-50 text-red-700 border-red-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
-            @click="setDropWithin(0)"
-          >
-            {{ t('dropcatch.today') }}
-          </button>
-          <button
-            :class="['px-2.5 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 3 ? 'bg-orange-50 text-orange-700 border-orange-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
-            @click="setDropWithin(3)"
-          >
-            3d
-          </button>
-          <button
-            :class="['px-2.5 py-1.5 text-xs rounded-lg border transition-colors', dropWithinFilter === 7 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
-            @click="setDropWithin(7)"
-          >
-            7d
-          </button>
-
-          <span class="hidden sm:inline text-gray-300 mx-1">|</span>
+          <span class="hidden sm:inline text-gray-300 mx-0.5">|</span>
 
           <!-- Sort -->
-          <button
-            v-for="s in [
-              { key: 'drop_date', label: t('dropcatch.sortByDate') },
-              { key: 'auction_price', label: t('dropcatch.auctionPrice') },
-              { key: 'domain_name', label: t('dropcatch.sortByName') },
-            ]"
-            :key="s.key"
-            :class="['px-2.5 py-1.5 text-xs font-medium rounded-lg border transition-colors', sortBy === s.key ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
-            @click="setSort(s.key)"
-          >
-            {{ s.label }}
-            <Icon
-              v-if="sortBy === s.key"
-              :name="sortOrder === 'ASC' ? 'material-symbols:arrow-upward' : 'material-symbols:arrow-downward'"
-              class="h-3 w-3 inline ml-0.5"
-            />
-          </button>
-
-          <!-- Search -->
-          <div class="flex-1 min-w-[120px]">
-            <input
-              v-model="search"
-              type="text"
-              :placeholder="t('dropcatch.searchPlaceholder')"
-              class="w-full h-8 px-3 text-xs border border-gray-200 rounded-lg bg-white"
-            />
+          <div class="flex items-center gap-1">
+            <button
+              v-for="s in [
+                { key: 'drop_date', label: t('dropcatch.sortByDate') },
+                { key: 'auction_price', label: t('dropcatch.auctionPrice') },
+                { key: 'domain_name', label: t('dropcatch.sortByName') },
+              ]"
+              :key="s.key"
+              :class="['px-2 py-1.5 text-xs font-medium rounded-lg border transition-colors', sortBy === s.key ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+              @click="setSort(s.key)"
+            >
+              {{ s.label }}
+              <Icon
+                v-if="sortBy === s.key"
+                :name="sortOrder === 'ASC' ? 'material-symbols:arrow-upward' : 'material-symbols:arrow-downward'"
+                class="h-3 w-3 inline ml-0.5"
+              />
+            </button>
           </div>
         </div>
       </div>
@@ -371,7 +359,7 @@ onMounted(async () => {
           v-for="d in domains"
           :key="d.id"
           class="bg-white rounded-xl border border-gray-200 p-4 hover:shadow-md hover:border-blue-200 transition-all cursor-pointer"
-          @click="showWhois(d.domain_name)"
+          @click="goToWhois(d.domain_name)"
         >
           <!-- Domain name + type badge -->
           <div class="flex items-center justify-between mb-2">
@@ -434,101 +422,5 @@ onMounted(async () => {
         </div>
       </div>
     </template>
-
-    <!-- WHOIS Modal -->
-    <Teleport to="body">
-      <Transition name="fade">
-        <div
-          v-if="showWhoisModal"
-          class="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4"
-          @click.self="showWhoisModal = false"
-        >
-          <div class="bg-white rounded-xl shadow-xl w-full max-w-lg max-h-[80vh] overflow-y-auto">
-            <!-- Header -->
-            <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
-              <h3 class="text-lg font-semibold text-gray-900">WHOIS: {{ whoisDomain }}</h3>
-              <button class="text-gray-400 hover:text-gray-600" @click="showWhoisModal = false">
-                <Icon name="material-symbols:close" class="h-5 w-5" />
-              </button>
-            </div>
-
-            <!-- Loading -->
-            <div v-if="whoisLoading" class="flex items-center justify-center py-12">
-              <Icon name="material-symbols:progress-activity" class="h-6 w-6 text-blue-500 animate-spin" />
-            </div>
-
-            <!-- Error -->
-            <div v-else-if="whoisError" class="p-5 text-center">
-              <Icon name="material-symbols:error-outline" class="h-10 w-10 text-red-300 mx-auto mb-2" />
-              <p class="text-sm text-red-600">{{ whoisError }}</p>
-            </div>
-
-            <!-- WHOIS data -->
-            <div v-else-if="whoisData" class="p-5 space-y-3 text-sm">
-              <div v-if="whoisData.registrar" class="flex justify-between">
-                <span class="text-gray-500">Registrar</span>
-                <span class="text-gray-900 font-medium">{{ whoisData.registrar }}</span>
-              </div>
-              <div v-if="whoisData.creationDate" class="flex justify-between">
-                <span class="text-gray-500">Created</span>
-                <span class="text-gray-900">{{ whoisData.creationDate?.split('T')[0] }}</span>
-              </div>
-              <div v-if="whoisData.expirationDate" class="flex justify-between">
-                <span class="text-gray-500">Expires</span>
-                <span class="text-gray-900">{{ whoisData.expirationDate?.split('T')[0] }}</span>
-              </div>
-              <div v-if="whoisData.updatedDate" class="flex justify-between">
-                <span class="text-gray-500">Updated</span>
-                <span class="text-gray-900">{{ whoisData.updatedDate?.split('T')[0] }}</span>
-              </div>
-              <div v-if="whoisData.nameServers?.length" class="flex justify-between">
-                <span class="text-gray-500">Name Servers</span>
-                <span class="text-gray-900 text-right">{{ whoisData.nameServers.join(', ') }}</span>
-              </div>
-              <div v-if="whoisData.status?.length">
-                <span class="text-gray-500 block mb-1">Status</span>
-                <div class="flex flex-wrap gap-1">
-                  <span
-                    v-for="s in whoisData.status"
-                    :key="s"
-                    class="inline-flex px-2 py-0.5 text-xs rounded-full bg-gray-100 text-gray-600"
-                  >{{ s }}</span>
-                </div>
-              </div>
-              <div v-if="whoisData.registrantName" class="flex justify-between">
-                <span class="text-gray-500">Registrant</span>
-                <span class="text-gray-900">{{ whoisData.registrantName }}</span>
-              </div>
-              <div v-if="whoisData.registrantEmail" class="flex justify-between">
-                <span class="text-gray-500">Email</span>
-                <span class="text-gray-900">{{ whoisData.registrantEmail }}</span>
-              </div>
-
-              <!-- Raw WHOIS toggle -->
-              <details v-if="whoisData.rawText" class="mt-4">
-                <summary class="text-xs text-blue-600 cursor-pointer hover:underline">Raw WHOIS</summary>
-                <pre class="mt-2 p-3 bg-gray-50 rounded-lg text-xs text-gray-600 overflow-x-auto whitespace-pre-wrap max-h-60">{{ whoisData.rawText }}</pre>
-              </details>
-            </div>
-
-            <!-- Actions -->
-            <div class="px-5 py-3 border-t border-gray-100 flex justify-end gap-2">
-              <button
-                class="px-3 py-1.5 text-xs text-gray-600 border border-gray-200 rounded-lg hover:bg-gray-50"
-                @click="copyDomain(whoisDomain)"
-              >
-                {{ t('dropcatch.copyDomain') }}
-              </button>
-              <button
-                class="px-3 py-1.5 text-xs text-white bg-blue-600 rounded-lg hover:bg-blue-700"
-                @click="showWhoisModal = false"
-              >
-                {{ t('common.confirm') }}
-              </button>
-            </div>
-          </div>
-        </div>
-      </Transition>
-    </Teleport>
   </div>
 </template>

@@ -213,6 +213,8 @@
       "renewalPrice": "Renewal Price",
       "holdCost": "Holding Cost",
       "totalInvestment": "Total Investment",
+      "dailyCost": "Daily Cost",
+      "day": "day",
       "noTags": "No tags",
       "noNotes": "No notes",
       "renewalDate": "Renewal Date",

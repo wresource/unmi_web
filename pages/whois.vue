@@ -163,6 +163,13 @@ function formatPriceDisplay(price: number | null, currency: string): string {
 
 onMounted(() => {
   fetchHistory()
+
+  // Auto-query from URL params
+  const route = useRoute()
+  if (route.query.domain) {
+    domainInput.value = String(route.query.domain)
+    queryWhois()
+  }
 })
 </script>
 

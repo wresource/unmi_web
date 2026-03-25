@@ -213,6 +213,8 @@
       "renewalPrice": "续费价格",
       "holdCost": "持有成本",
       "totalInvestment": "总投入",
+      "dailyCost": "日均成本",
+      "day": "天",
       "noTags": "暂无标签",
       "noNotes": "暂无备注",
       "renewalDate": "续费日期",

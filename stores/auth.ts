@@ -1,3 +1,25 @@
+function saveSession(id: number, name: string) {
+  if (import.meta.client) {
+    localStorage.setItem('auth_session', JSON.stringify({ accountId: id, accountName: name }))
+  }
+}
+
+function loadSession(): { accountId: number; accountName: string } | null {
+  if (import.meta.client) {
+    try {
+      const raw = localStorage.getItem('auth_session')
+      if (raw) return JSON.parse(raw)
+    } catch {}
+  }
+  return null
+}
+
+function clearSession() {
+  if (import.meta.client) {
+    localStorage.removeItem('auth_session')
+  }
+}
+
 export const useAuthStore = defineStore('auth', () => {
   const unlocked = ref(false)
   const initialized = ref(false)
@@ -16,6 +38,17 @@ export const useAuthStore = defineStore('auth', () => {
       return { initialized: false, accountCount: 0 }
     } finally {
       loading.value = false
+
+      // Restore session from localStorage
+      if (!unlocked.value) {
+        const session = loadSession()
+        if (session && session.accountId > 0) {
+          accountId.value = session.accountId
+          accountName.value = session.accountName
+          unlocked.value = true
+          initialized.value = true
+        }
+      }
     }
   }
 
@@ -30,6 +63,7 @@ export const useAuthStore = defineStore('auth', () => {
         unlocked.value = true
         accountId.value = data.accountId
         accountName.value = data.accountName
+        saveSession(data.accountId, data.accountName)
       }
       return data
     } catch (error: any) {
@@ -51,6 +85,7 @@ export const useAuthStore = defineStore('auth', () => {
         unlocked.value = true
         accountId.value = data.accountId as number
         accountName.value = data.accountName
+        saveSession(data.accountId as number, data.accountName)
       }
       return data
     } catch (error: any) {
@@ -64,6 +99,7 @@ export const useAuthStore = defineStore('auth', () => {
     unlocked.value = false
     accountId.value = 0
     accountName.value = ''
+    clearSession()
     navigateTo('/unlock')
   }
 

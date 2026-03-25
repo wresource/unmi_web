@@ -14,6 +14,23 @@ export default defineNuxtRouteMiddleware(async (to) => {
     }
   }
 
+  // If store says not unlocked, try restoring from client storage
+  if (import.meta.client && !authStore.unlocked) {
+    const raw = localStorage.getItem('auth_session')
+    if (raw) {
+      try {
+        const session = JSON.parse(raw)
+        if (session.accountId > 0) {
+          authStore.accountId = session.accountId
+          authStore.accountName = session.accountName
+          authStore.unlocked = true
+          authStore.initialized = true
+          return // Don't redirect
+        }
+      } catch {}
+    }
+  }
+
   // If not initialized or not unlocked, redirect to unlock page
   if (!authStore.initialized || !authStore.unlocked) {
     return navigateTo('/unlock')
