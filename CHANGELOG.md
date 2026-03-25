@@ -1,5 +1,39 @@
 # Changelog
 
+## v1.4.0 (2026-03-25)
+
+### 新增功能
+
+#### 域名抢注/监控模块
+- 域名抢注页面（`/dropcatch`），发现即将释放的优质域名
+- 释放列表：搜索、筛选（后缀/长度/字符类型/估值/状态）、排序、分页
+- 我的关注列表：添加/删除关注域名，支持备注
+- 右侧统计面板：后缀分布、长度分布
+- 状态栏：即将删除数量、待释放数量、后缀数量
+- 快捷操作：一键关注、WHOIS 查询、复制域名
+- 域名属性分析：纯字母/纯数字/连字符检测、长度、估值
+- 示例数据生成器（用于演示/测试）
+
+#### 新增页面
+- 域名抢注页面（`/dropcatch`）
+- 侧栏导航新增"域名抢注"入口
+
+#### 新增 API
+- `GET /api/dropcatch/domains` - 获取释放域名列表（支持筛选/排序/分页）
+- `GET /api/dropcatch/domains/[name]` - 获取单个域名详情 + AI 估值
+- `POST /api/dropcatch/generate` - 生成/刷新示例数据
+- `GET /api/dropcatch/watchlist` - 获取关注列表
+- `POST /api/dropcatch/watchlist` - 添加域名到关注列表
+- `DELETE /api/dropcatch/watchlist/[id]` - 从关注列表移除
+- `GET /api/dropcatch/stats` - 释放域名统计数据
+
+### 数据库变更
+- 新增 `drop_domains` 表（释放域名列表，含属性分析字段）
+- 新增 `domain_watchlist` 表（用户关注列表）
+- 新增 4 个索引（tld、drop_date、status、domain_length）
+
+---
+
 ## v1.3.0 (2026-03-25)
 
 ### 新增功能

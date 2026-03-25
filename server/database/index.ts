@@ -202,6 +202,42 @@ function initDatabase(db: Database.Database) {
     CREATE INDEX IF NOT EXISTS idx_domain_views_domain_id ON domain_views(domain_id);
     CREATE INDEX IF NOT EXISTS idx_domain_views_view_date ON domain_views(view_date);
 
+    CREATE TABLE IF NOT EXISTS drop_domains (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain_name TEXT NOT NULL COLLATE NOCASE,
+      tld TEXT NOT NULL,
+      drop_date TEXT,
+      status TEXT DEFAULT 'pending_delete',
+      source TEXT DEFAULT '',
+      registrar TEXT DEFAULT '',
+      estimated_value INTEGER DEFAULT 0,
+      domain_length INTEGER DEFAULT 0,
+      has_numbers INTEGER DEFAULT 0,
+      has_hyphens INTEGER DEFAULT 0,
+      is_pure_letters INTEGER DEFAULT 0,
+      is_pure_numbers INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(domain_name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_drop_domains_tld ON drop_domains(tld);
+    CREATE INDEX IF NOT EXISTS idx_drop_domains_drop_date ON drop_domains(drop_date);
+    CREATE INDEX IF NOT EXISTS idx_drop_domains_status ON drop_domains(status);
+    CREATE INDEX IF NOT EXISTS idx_drop_domains_domain_length ON drop_domains(domain_length);
+
+    CREATE TABLE IF NOT EXISTS domain_watchlist (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      domain_name TEXT NOT NULL COLLATE NOCASE,
+      tld TEXT NOT NULL,
+      note TEXT DEFAULT '',
+      status TEXT DEFAULT 'watching',
+      expiry_date TEXT,
+      last_checked TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(account_id, domain_name)
+    );
+    CREATE INDEX IF NOT EXISTS idx_domain_watchlist_account_id ON domain_watchlist(account_id);
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_domains_account_id ON domains(account_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_domains_account_domain ON domains(account_id, domain_name);
