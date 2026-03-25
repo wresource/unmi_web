@@ -1,5 +1,5 @@
 import { useDatabase } from '~/server/database'
-import { isDropCatchConfigured, fetchDropCatchAuctions, fetchDropCatchDropping } from './dropcatch-api'
+import { isDropCatchConfigured, fetchAllAuctionsCsv, fetchAuctionPrices } from './dropcatch-api'
 
 // ============================================================================
 // Domain Analysis
@@ -87,44 +87,34 @@ export async function fetchDropDomains(options?: {
   isRefreshing = true
   try {
     const tlds = options?.tlds || ['.com', '.net', '.org']
-    const maxPerTld = options?.maxPerTld || 2000
 
-    // Fetch from DropCatch API — all auction types (Dropped, PrivateSeller, PreRelease)
-    const auctions = await fetchDropCatchAuctions({
+    // Step 1: Download the FULL dataset via AllAuctions CSV
+    // This contains ALL domains (27,000+), unlike the API which caps at 100/type
+    const csvDomains = await fetchAllAuctionsCsv({
       tlds: tlds.map(t => t.replace(/^\./, '')),
-      maxPerTld,
     })
 
-    // Also fetch from CSV downloads
-    const dropping = await fetchDropCatchDropping()
+    // Step 2: Enrich with real auction prices from the API (best-effort, max 100/type)
+    const priceMap = await fetchAuctionPrices({
+      tlds: tlds.map(t => t.replace(/^\./, '')),
+    })
 
-    // Merge (auction data takes priority for duplicates since it has prices)
+    // Build final dataset
     const merged = new Map<string, any>()
-    for (const d of dropping) {
+    for (const d of csvDomains) {
+      const prices = priceMap.get(d.domain_name)
       merged.set(d.domain_name, {
         domain_name: d.domain_name,
         tld: d.tld,
-        drop_date: d.drop_date,
+        drop_date: d.end_time,
         status: d.auction_type === 'PreRelease' ? 'pre_release' : d.auction_type === 'PrivateSeller' ? 'private_seller' : 'dropped',
         source: 'dropcatch',
-        registrar: '',
-        auction_price: 0,
-      })
-    }
-    for (const a of auctions) {
-      merged.set(a.domain_name, {
-        domain_name: a.domain_name,
-        tld: a.tld,
-        drop_date: a.end_time,
-        status: a.auction_type === 'PreRelease' ? 'pre_release' : a.auction_type === 'PrivateSeller' ? 'private_seller' : 'dropped',
-        source: 'dropcatch',
-        registrar: a.bidders > 0 ? `${a.bidders} bidders` : '',
-        auction_price: a.auction_price,
-        auction_id: a.auction_id,
+        registrar: prices?.bidders ? `${prices.bidders} bidders` : '',
+        auction_price: prices?.price || 0,
       })
     }
 
-    console.log(`[dropcatch] DropCatch API: ${auctions.length} auctions, ${dropping.length} dropping, ${merged.size} merged`)
+    console.log(`[dropcatch] CSV: ${csvDomains.length} domains, prices enriched: ${priceMap.size}, merged: ${merged.size}`)
 
     if (merged.size > 0) {
       return importDropDomains(Array.from(merged.values()))

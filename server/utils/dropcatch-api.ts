@@ -1,9 +1,10 @@
 // DropCatch.com API Client
 // Credentials from environment variables - NOT committed to git
 
+import { inflateRawSync } from 'zlib'
+
 const API_BASE = 'https://api.dropcatch.com'
 
-// Token cache
 let cachedToken: string | null = null
 let tokenExpiry = 0
 
@@ -37,7 +38,7 @@ export function isDropCatchConfigured(): boolean {
 
 export async function testDropCatchAuth(): Promise<{ ok: boolean; error?: string }> {
   const token = await getToken()
-  if (!token) return { ok: false, error: 'Authentication failed - check credentials' }
+  if (!token) return { ok: false, error: 'Authentication failed' }
   return { ok: true }
 }
 
@@ -51,173 +52,174 @@ export interface DropCatchAuction {
   auction_id: number
 }
 
+// ============================================================================
+// ZIP extraction helper
+// ============================================================================
+
 /**
- * Fetch ALL active auctions from DropCatch — Dropped + PrivateSeller + PreRelease.
- * Sorted by ending soonest first. Max 2000 per TLD.
- * Only pure letter domains, length 1-5.
+ * Extract the first file from a ZIP buffer using raw inflate.
+ * ZIP local file header: PK\x03\x04, then metadata, then compressed data.
  */
-export async function fetchDropCatchAuctions(options?: {
+function extractZipFirstFile(zipBuffer: Buffer): string {
+  // Find PK\x03\x04 signature
+  const sig = Buffer.from([0x50, 0x4B, 0x03, 0x04])
+  const idx = zipBuffer.indexOf(sig)
+  if (idx === -1) {
+    // Not a ZIP — try as plain text
+    return zipBuffer.toString('utf8')
+  }
+
+  // Parse local file header
+  const compressionMethod = zipBuffer.readUInt16LE(idx + 8)
+  const compressedSize = zipBuffer.readUInt32LE(idx + 18)
+  const fileNameLength = zipBuffer.readUInt16LE(idx + 26)
+  const extraFieldLength = zipBuffer.readUInt16LE(idx + 28)
+  const dataOffset = idx + 30 + fileNameLength + extraFieldLength
+
+  if (compressionMethod === 0) {
+    // Stored (no compression)
+    return zipBuffer.subarray(dataOffset, dataOffset + compressedSize).toString('utf8')
+  } else if (compressionMethod === 8) {
+    // Deflate
+    const compressed = zipBuffer.subarray(dataOffset, dataOffset + compressedSize)
+    const decompressed = inflateRawSync(compressed)
+    return decompressed.toString('utf8')
+  }
+
+  // Fallback: try raw text
+  return zipBuffer.toString('utf8')
+}
+
+// ============================================================================
+// Main data fetching — uses CSV downloads (full data, not limited to 100)
+// ============================================================================
+
+/**
+ * Download ALL auction domains from DropCatch via AllAuctions CSV.
+ * This returns the COMPLETE dataset (27,000+ domains), unlike the
+ * /v2/auctions API which is capped at 100 per type.
+ *
+ * Returns only pure-letter 1-5 char domains.
+ */
+export async function fetchAllAuctionsCsv(options?: {
   tlds?: string[]
-  maxPerTld?: number
 }): Promise<DropCatchAuction[]> {
   const token = await getToken()
   if (!token) return []
 
-  const tlds = options?.tlds || ['com', 'net', 'org']
-  const maxPerTld = options?.maxPerTld || 2000
-  const allResults: DropCatchAuction[] = []
-  const seen = new Set<string>()
+  const allowedTlds = new Set((options?.tlds || ['com', 'net', 'org']).map(t => t.replace(/^\./, '').toLowerCase()))
 
-  // Strategy: fetch ALL types together, paginate through time windows
-  // Use EndTime.Max to get auctions ending within 7 days (most relevant)
-  const now = new Date()
-  const timeWindows = [
-    new Date(now.getTime() + 1 * 86400000),   // next 1 day
-    new Date(now.getTime() + 3 * 86400000),   // next 3 days
-    new Date(now.getTime() + 7 * 86400000),   // next 7 days
-    new Date(now.getTime() + 30 * 86400000),  // next 30 days
-  ]
+  try {
+    console.log('[dropcatch-api] Downloading AllAuctions CSV...')
+    const res = await fetch(`${API_BASE}/v2/downloads/auctions/AllAuctions?fileType=Csv`, {
+      headers: { Authorization: `Bearer ${token}` },
+      signal: AbortSignal.timeout(60000), // 60s for large file
+    })
 
-  for (const windowEnd of timeWindows) {
-    // Fetch all types in this time window
-    for (const auctionType of ['Dropped', 'PrivateSeller', 'PreRelease']) {
-      try {
-        let nextCursor: string | undefined
-        let pagesFetched = 0
-
-        while (pagesFetched < 20) {
-          const params = new URLSearchParams({
-            size: '100',
-            showAllActive: 'true',
-          })
-          params.append('Types', auctionType)
-          params.set('EndTime.Max', windowEnd.toISOString())
-          for (const tld of tlds) params.append('Tlds', tld)
-          if (nextCursor) params.set('next', nextCursor)
-
-          const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
-            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-            signal: AbortSignal.timeout(15000),
-          })
-
-          if (!res.ok) break
-
-          const data = await res.json() as any
-          const items = data.items || []
-          if (items.length === 0) break
-
-          for (const item of items) {
-            const name = (item.name || '').toLowerCase()
-            if (!name.includes('.') || seen.has(name)) continue
-            const sld = name.split('.')[0]
-            const tld = '.' + name.split('.').slice(1).join('.')
-
-            if (!/^[a-z]+$/.test(sld) || sld.length > 5) continue
-
-            seen.add(name)
-            allResults.push({
-              domain_name: name,
-              tld,
-              auction_price: item.highBid || 0,
-              end_time: item.endTime || '',
-              bidders: item.numberOfBidders || 0,
-              auction_type: item.type || auctionType,
-              auction_id: item.auctionId || 0,
-            })
-          }
-
-          nextCursor = data.next
-          if (!nextCursor) break
-          pagesFetched++
-          await new Promise(r => setTimeout(r, 100))
-        }
-      } catch (err) {
-        console.warn(`[dropcatch-api] ${auctionType} window failed:`, (err as Error).message)
-      }
+    if (!res.ok) {
+      console.warn(`[dropcatch-api] AllAuctions download: HTTP ${res.status}`)
+      return []
     }
+
+    const buffer = Buffer.from(await res.arrayBuffer())
+    const csvText = extractZipFirstFile(buffer)
+
+    // Parse CSV: Domain,TLD,Type,Auction End
+    const lines = csvText.split(/\r?\n/)
+    const results: DropCatchAuction[] = []
+    const seen = new Set<string>()
+
+    let skippedHeader = false
+    for (const line of lines) {
+      if (!skippedHeader) {
+        if (line.includes('Domain,TLD') || line.startsWith('*')) {
+          skippedHeader = true
+          continue
+        }
+        if (line.includes(',')) skippedHeader = true
+        else continue
+      }
+
+      const parts = line.split(',')
+      if (parts.length < 4) continue
+
+      const rawDomain = parts[0].trim()
+      const tld = parts[1].trim().toLowerCase()
+      const auctionType = parts[2].trim()
+      const endDate = parts[3].trim()
+
+      if (!tld || !allowedTlds.has(tld)) continue
+
+      // Get SLD (the domain name part before TLD)
+      const sld = rawDomain.toLowerCase().replace(/\..+$/, '')
+
+      // Filter: pure letters, 1-5 chars
+      if (!/^[a-z]+$/.test(sld)) continue
+      if (sld.length > 5) continue
+
+      const fullDomain = `${sld}.${tld}`
+      if (seen.has(fullDomain)) continue
+      seen.add(fullDomain)
+
+      results.push({
+        domain_name: fullDomain,
+        tld: '.' + tld,
+        auction_price: 0, // CSV doesn't include prices
+        end_time: endDate,
+        bidders: 0,
+        auction_type: auctionType,
+        auction_id: 0,
+      })
+    }
+
+    console.log(`[dropcatch-api] AllAuctions CSV: ${lines.length} lines, ${results.length} matched`)
+    return results
+  } catch (err) {
+    console.warn('[dropcatch-api] AllAuctions download failed:', (err as Error).message)
+    return []
   }
-
-  console.log(`[dropcatch-api] Total fetched: ${allResults.length} domains`)
-
-  // Sort by end_time ascending
-  allResults.sort((a, b) => {
-    if (!a.end_time) return 1
-    if (!b.end_time) return -1
-    return new Date(a.end_time).getTime() - new Date(b.end_time).getTime()
-  })
-
-  return allResults
 }
 
 /**
- * Download ALL auction domain CSVs from DropCatch (Dropped + PrivateSeller + PreRelease).
- * Returns parsed domain list filtered for pure letter 1-5 char domains.
+ * Fetch auction prices for specific domains via the /v2/auctions API.
+ * Since the API only returns 100/type, we use it to enrich CSV data with prices.
  */
-export async function fetchDropCatchDropping(): Promise<{
-  domain_name: string
-  tld: string
-  drop_date: string
-  auction_type: string
-}[]> {
+export async function fetchAuctionPrices(options?: {
+  tlds?: string[]
+}): Promise<Map<string, { price: number; bidders: number }>> {
   const token = await getToken()
-  if (!token) return []
+  if (!token) return new Map()
 
-  const allResults: any[] = []
-  const downloadTypes = ['DroppedAuctions', 'PrivateSeller', 'PreRelease']
+  const tlds = (options?.tlds || ['com', 'net', 'org']).map(t => t.replace(/^\./, ''))
+  const priceMap = new Map<string, { price: number; bidders: number }>()
 
-  for (const dlType of downloadTypes) {
+  for (const auctionType of ['Dropped', 'PrivateSeller', 'PreRelease']) {
     try {
-      const res = await fetch(`${API_BASE}/v2/downloads/auctions/${dlType}?fileType=Csv`, {
-        headers: { Authorization: `Bearer ${token}` },
-        signal: AbortSignal.timeout(30000),
+      const params = new URLSearchParams({
+        size: '100',
+        showAllActive: 'true',
       })
-      if (!res.ok) {
-        console.warn(`[dropcatch-api] Download ${dlType}: HTTP ${res.status}`)
-        continue
-      }
+      params.append('Types', auctionType)
+      for (const tld of tlds) params.append('Tlds', tld)
 
-      const buffer = await res.arrayBuffer()
-      const decoder = new TextDecoder()
-      const text = decoder.decode(new Uint8Array(buffer))
+      const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        signal: AbortSignal.timeout(15000),
+      })
+      if (!res.ok) continue
 
-      // Find CSV content in the ZIP (look for the CSV header line)
-      const csvMatch = text.match(/Domain,TLD,Type,Auction End\r?\n([\s\S]*?)(?:PK\x01|\x00{10,}|$)/)
-      if (!csvMatch) continue
-
-      const lines = csvMatch[1].trim().split(/\r?\n/)
-      for (const line of lines) {
-        const parts = line.split(',')
-        if (parts.length < 4) continue
-        const domainName = parts[0].trim().toLowerCase()
-        const tld = parts[1].trim().toLowerCase()
-        const auctionType = parts[2].trim()
-        const endDate = parts[3].trim()
-
-        if (!tld) continue
-        const sld = domainName.replace(/\..+$/, '') // handle if domain already has TLD
-
-        // Filter: pure letters, 1-5 chars
-        if (!/^[a-z]+$/.test(sld)) continue
-        if (sld.length > 5) continue
-
-        const fullDomain = domainName.includes('.') ? domainName : `${domainName}.${tld}`
-
-        // Avoid duplicates
-        if (!allResults.some(r => r.domain_name === fullDomain)) {
-          allResults.push({
-            domain_name: fullDomain,
-            tld: '.' + tld,
-            drop_date: endDate,
-            auction_type: auctionType,
+      const data = await res.json() as any
+      for (const item of (data.items || [])) {
+        const name = (item.name || '').toLowerCase()
+        if (item.highBid > 0) {
+          priceMap.set(name, {
+            price: item.highBid,
+            bidders: item.numberOfBidders || 0,
           })
         }
       }
-
-      console.log(`[dropcatch-api] Download ${dlType}: parsed, total ${allResults.length}`)
-    } catch (err) {
-      console.warn(`[dropcatch-api] Download ${dlType} failed:`, (err as Error).message)
-    }
+    } catch {}
   }
 
-  return allResults
+  return priceMap
 }
