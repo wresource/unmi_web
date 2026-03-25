@@ -24,7 +24,7 @@ watch(() => route.path, () => {
 })
 
 const navItems = computed(() => [
-  { label: t('nav.dashboard'), icon: 'material-symbols:dashboard', path: '/' },
+  { label: t('nav.dashboard'), icon: 'material-symbols:dashboard', path: '/dashboard' },
   { label: t('nav.domainList'), icon: 'material-symbols:domain', path: '/domains' },
   { label: t('nav.statistics'), icon: 'material-symbols:analytics', path: '/statistics' },
   { label: t('nav.importExport'), icon: 'material-symbols:import-export', path: '/import-export' },
@@ -37,7 +37,7 @@ const navItems = computed(() => [
 ])
 
 function isActive(path: string) {
-  if (path === '/') return route.path === '/'
+  if (path === '/dashboard') return route.path === '/dashboard'
   return route.path.startsWith(path)
 }
 
@@ -125,6 +125,22 @@ onUnmounted(() => {
           </Transition>
         </button>
       </nav>
+
+      <!-- Go to showcase button -->
+      <div class="border-t border-gray-700/50 px-3 pt-3">
+        <a
+          href="/show"
+          target="_blank"
+          rel="noopener"
+          class="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium text-gray-400 hover:bg-gray-800 hover:text-white transition-all duration-150"
+          :title="appStore.sidebarCollapsed ? t('show.footer.home') : undefined"
+        >
+          <Icon name="material-symbols:open-in-new" class="h-5 w-5 shrink-0" />
+          <Transition name="fade">
+            <span v-if="!appStore.sidebarCollapsed" class="whitespace-nowrap">{{ t('show.footer.home') }}</span>
+          </Transition>
+        </a>
+      </div>
 
       <!-- Account info + collapse toggle -->
       <div class="hidden lg:block border-t border-gray-700/50 p-3 space-y-1">
