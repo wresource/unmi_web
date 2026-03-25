@@ -809,7 +809,21 @@
     "tldDistribution": "后缀分布",
     "lengthDistribution": "长度分布",
     "dataSource": "数据源说明",
-    "dataSourceDesc": "数据来自公开域名注册信息，仅供参考"
+    "dataSourceDesc": "数据来自公开域名注册信息，仅供参考",
+    "today": "今日到期",
+    "within10d": "10天内",
+    "within30d": "30天内",
+    "allDomains": "全部",
+    "autoUpdate": "数据每日自动更新",
+    "lastUpdate": "上次更新",
+    "auctionTab": "拍卖监控",
+    "monitoring": "监控中",
+    "letterOnly": "纯字母",
+    "chars1": "1字母",
+    "chars2": "2字母",
+    "chars3": "3字母",
+    "chars4": "4字母",
+    "chars5": "5字母"
   },
 
   "daysRemaining": {

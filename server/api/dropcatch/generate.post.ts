@@ -1,6 +1,6 @@
 import { defineEventHandler, createError, readBody } from 'h3'
 import { getAccountId } from '~/server/utils/account'
-import { fetchRealDropDomains } from '~/server/utils/dropcatch'
+import { fetchRealDropDomains, markRefreshed } from '~/server/utils/dropcatch'
 import { appraiseDomain } from '~/server/utils/appraisal'
 import { useDatabase } from '~/server/database'
 
@@ -12,14 +12,19 @@ export default defineEventHandler(async (event) => {
 
   // Read optional parameters from request body
   const body = await readBody(event).catch(() => ({})) || {}
-  const tlds = Array.isArray(body.tlds) ? body.tlds as string[] : undefined
+  const tlds = Array.isArray(body.tlds) ? body.tlds as string[] : ['.com', '.net', '.org']
   const domains = Array.isArray(body.domains) ? body.domains as string[] : undefined
+  const maxPerTld = typeof body.maxPerTld === 'number' ? Math.min(body.maxPerTld, 100) : 100
 
   // Fetch real drop domains via RDAP checks
   const imported = await fetchRealDropDomains({
     tlds,
+    maxPerTld,
     domains,
   })
+
+  // Mark as refreshed after manual trigger
+  markRefreshed()
 
   // Run appraisal engine on imported domains with no estimated value
   let appraised = 0

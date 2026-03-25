@@ -1,7 +1,16 @@
 import { defineEventHandler, getQuery } from 'h3'
 import { useDatabase } from '~/server/database'
+import { needsRefresh, fetchRealDropDomains, markRefreshed } from '~/server/utils/dropcatch'
 
-export default defineEventHandler((event) => {
+export default defineEventHandler(async (event) => {
+  // Auto-refresh once per day — runs in background, does NOT block this response
+  if (needsRefresh()) {
+    markRefreshed() // Mark immediately to prevent concurrent triggers
+    fetchRealDropDomains({ tlds: ['.com', '.net', '.org'], maxPerTld: 100 })
+      .then(count => console.log(`[dropcatch] Auto-refresh complete: ${count} domains`))
+      .catch(err => console.warn('[dropcatch] Auto-refresh failed:', err.message))
+  }
+
   const db = useDatabase()
   const query = getQuery(event)
 
@@ -11,10 +20,8 @@ export default defineEventHandler((event) => {
   const maxLength = query.maxLength ? parseInt(query.maxLength as string) : 0
   const maxPrice = query.maxPrice ? parseInt(query.maxPrice as string) : 0
   const status = (query.status as string) || ''
-  const hasNumbers = (query.hasNumbers as string) || ''
-  const hasHyphens = (query.hasHyphens as string) || ''
-  const pureLetters = (query.pureLetters as string) || ''
-  const pureNumbers = (query.pureNumbers as string) || ''
+  const source = (query.source as string) || ''
+  const dropWithin = query.dropWithin !== undefined ? parseInt(query.dropWithin as string) : -1
   const sortBy = (query.sortBy as string) || 'drop_date'
   const sortOrder = (query.sortOrder as string)?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
   const page = Math.max(1, parseInt(query.page as string) || 1)
@@ -25,6 +32,10 @@ export default defineEventHandler((event) => {
 
   const conditions: string[] = []
   const params: any[] = []
+
+  // Pure letters only — always enforced
+  conditions.push('is_pure_letters = 1')
+  conditions.push('domain_length <= 5')
 
   if (search) {
     conditions.push('domain_name LIKE ?')
@@ -50,19 +61,25 @@ export default defineEventHandler((event) => {
     conditions.push('status = ?')
     params.push(status)
   }
-  if (hasNumbers === '1') {
-    conditions.push('has_numbers = 1')
-  } else if (hasNumbers === '0') {
-    conditions.push('has_numbers = 0')
+  if (source) {
+    conditions.push('source = ?')
+    params.push(source)
   }
-  if (hasHyphens === '0') {
-    conditions.push('has_hyphens = 0')
-  }
-  if (pureLetters === '1') {
-    conditions.push('is_pure_letters = 1')
-  }
-  if (pureNumbers === '1') {
-    conditions.push('is_pure_numbers = 1')
+
+  // Drop within N days filter
+  if (dropWithin >= 0) {
+    const now = new Date()
+    const futureDate = new Date(now.getTime() + dropWithin * 86400000)
+    if (dropWithin === 0) {
+      // Today only
+      const todayStr = now.toISOString().split('T')[0]
+      conditions.push("drop_date LIKE ?")
+      params.push(`${todayStr}%`)
+    } else {
+      conditions.push("drop_date != ''")
+      conditions.push("drop_date <= ?")
+      params.push(futureDate.toISOString())
+    }
   }
 
   const whereClause = conditions.length > 0 ? 'WHERE ' + conditions.join(' AND ') : ''
@@ -89,7 +106,12 @@ export default defineEventHandler((event) => {
   })
 
   // Get distinct TLDs for filter dropdown
-  const tlds = db.prepare('SELECT DISTINCT tld FROM drop_domains ORDER BY tld').all() as { tld: string }[]
+  const tlds = db.prepare('SELECT DISTINCT tld FROM drop_domains WHERE is_pure_letters = 1 AND domain_length <= 5 ORDER BY tld').all() as { tld: string }[]
+
+  // Get last refresh time
+  const refreshRow = db.prepare(
+    "SELECT setting_value FROM notification_settings WHERE account_id = 0 AND setting_key = 'dropcatch_last_refresh'"
+  ).get() as { setting_value: string } | undefined
 
   return {
     data: enriched,
@@ -97,5 +119,6 @@ export default defineEventHandler((event) => {
     page,
     pageSize,
     tlds: tlds.map(t => t.tld),
+    lastRefresh: refreshRow?.setting_value || null,
   }
 })

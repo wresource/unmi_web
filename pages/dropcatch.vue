@@ -7,19 +7,17 @@ const appStore = useAppStore()
 appStore.setPageTitle(t('dropcatch.title'))
 
 // State
-const activeTab = ref<'droplist' | 'watchlist'>('droplist')
-const refreshing = ref(false)
+const activeTab = ref<'droplist' | 'auction' | 'watchlist'>('droplist')
 const loading = ref(false)
 const showFilters = ref(true)
 
 // Filters
 const search = ref('')
 const selectedTld = ref('')
-const minLength = ref<number | undefined>(undefined)
-const maxLength = ref<number | undefined>(undefined)
+const lengthFilter = ref<number | undefined>(undefined)
 const maxPrice = ref<number | undefined>(undefined)
-const charType = ref('all') // all, pureLetters, pureNumbers, noHyphens
 const statusFilter = ref('')
+const dropWithinFilter = ref(10) // default: within 10 days
 const sortBy = ref('drop_date')
 const sortOrder = ref('ASC')
 const page = ref(1)
@@ -32,6 +30,7 @@ const availableTlds = ref<string[]>([])
 const stats = ref<any>(null)
 const watchlist = ref<any[]>([])
 const watchlistDomainNames = ref<Set<string>>(new Set())
+const lastRefresh = ref<string | null>(null)
 
 // Watchlist dialog
 const showWatchlistDialog = ref(false)
@@ -57,18 +56,30 @@ async function fetchDomains() {
       pageSize: pageSize.value,
     }
     if (selectedTld.value) query.tld = selectedTld.value
-    if (minLength.value) query.minLength = minLength.value
-    if (maxLength.value) query.maxLength = maxLength.value
+    if (lengthFilter.value) {
+      query.minLength = lengthFilter.value
+      query.maxLength = lengthFilter.value
+    }
     if (maxPrice.value) query.maxPrice = maxPrice.value
     if (statusFilter.value) query.status = statusFilter.value
-    if (charType.value === 'pureLetters') query.pureLetters = '1'
-    if (charType.value === 'pureNumbers') query.pureNumbers = '1'
-    if (charType.value === 'noHyphens') query.hasHyphens = '0'
+
+    // Source filter based on tab
+    if (activeTab.value === 'auction') {
+      query.source = 'auction'
+    } else if (activeTab.value === 'droplist') {
+      query.source = 'rdap'
+    }
+
+    // Drop within filter (only for droplist tab)
+    if (activeTab.value === 'droplist' && dropWithinFilter.value >= 0) {
+      query.dropWithin = dropWithinFilter.value
+    }
 
     const res = await $fetch<any>('/api/dropcatch/domains', { query })
     domains.value = res.data
     total.value = res.total
     availableTlds.value = res.tlds
+    if (res.lastRefresh) lastRefresh.value = res.lastRefresh
   } catch {
     toast.error('Failed to fetch domains')
   } finally {
@@ -83,20 +94,6 @@ async function fetchWatchlist() {
     watchlist.value = res.data
     watchlistDomainNames.value = new Set(res.data.map((w: any) => w.domain_name))
   } catch {}
-}
-
-// Refresh data
-async function refreshData() {
-  refreshing.value = true
-  try {
-    const res = await $fetch<any>('/api/dropcatch/generate', { method: 'POST' })
-    toast.success(t('dropcatch.refreshed', { n: res.imported }))
-    await Promise.all([fetchDomains(), fetchStats()])
-  } catch {
-    toast.error('Failed to refresh data')
-  } finally {
-    refreshing.value = false
-  }
 }
 
 // Add to watchlist
@@ -172,8 +169,28 @@ function goPage(p: number) {
   }
 }
 
+// Set length quick filter
+function setLengthFilter(len: number | undefined) {
+  lengthFilter.value = lengthFilter.value === len ? undefined : len
+  page.value = 1
+  fetchDomains()
+}
+
+// Set drop-within filter
+function setDropWithin(days: number) {
+  dropWithinFilter.value = days
+  page.value = 1
+  fetchDomains()
+}
+
 // Filters watch
-watch([search, selectedTld, statusFilter, charType], () => {
+watch([search, selectedTld, statusFilter], () => {
+  page.value = 1
+  fetchDomains()
+})
+
+// Tab change
+watch(activeTab, () => {
   page.value = 1
   fetchDomains()
 })
@@ -185,9 +202,18 @@ function applyRangeFilters() {
 
 // Status badge class
 function statusClass(status: string) {
-  return status === 'pending_delete'
-    ? 'bg-red-100 text-red-700'
-    : 'bg-yellow-100 text-yellow-700'
+  if (status === 'pending_delete') return 'bg-red-100 text-red-700'
+  if (status === 'registered') return 'bg-purple-100 text-purple-700'
+  return 'bg-yellow-100 text-yellow-700'
+}
+
+// Status label
+function statusLabel(status: string) {
+  if (status === 'pending_delete') return t('dropcatch.pendingDelete')
+  if (status === 'registered') return t('dropcatch.monitoring')
+  if (status === 'expired') return t('domains.status.expired')
+  if (status === 'available') return t('whois.notRegistered')
+  return t('dropcatch.expiring')
 }
 
 // Format value
@@ -198,10 +224,17 @@ function formatValue(val: number) {
 // Days badge color
 function daysBadgeClass(days: number | null) {
   if (days === null) return 'text-gray-400'
+  if (days <= 0) return 'text-red-600 font-bold'
   if (days <= 3) return 'text-red-600 font-bold'
   if (days <= 7) return 'text-orange-500 font-semibold'
-  if (days <= 14) return 'text-yellow-600'
+  if (days <= 10) return 'text-yellow-600'
   return 'text-gray-600'
+}
+
+// Format last refresh time
+function formatLastRefresh(iso: string) {
+  const d = new Date(iso)
+  return d.toLocaleString()
 }
 
 // Init
@@ -218,14 +251,14 @@ onMounted(async () => {
         <h1 class="text-2xl font-bold text-gray-900">{{ t('dropcatch.title') }}</h1>
         <p class="text-sm text-gray-500 mt-1">{{ t('dropcatch.subtitle') }}</p>
       </div>
-      <button
-        class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-        :disabled="refreshing"
-        @click="refreshData"
-      >
-        <Icon name="material-symbols:refresh" class="h-4 w-4" :class="{ 'animate-spin': refreshing }" />
-        {{ refreshing ? t('dropcatch.refreshing') : t('dropcatch.refreshData') }}
-      </button>
+      <div class="flex items-center gap-3">
+        <span class="text-xs text-gray-400">
+          {{ t('dropcatch.autoUpdate') }}
+          <template v-if="lastRefresh">
+            &middot; {{ t('dropcatch.lastUpdate') }}: {{ formatLastRefresh(lastRefresh) }}
+          </template>
+        </span>
+      </div>
     </div>
 
     <!-- Stats bar -->
@@ -253,6 +286,12 @@ onMounted(async () => {
         {{ t('dropcatch.dropList') }}
       </button>
       <button
+        :class="['px-4 py-2 text-sm font-medium rounded-md transition-colors', activeTab === 'auction' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
+        @click="activeTab = 'auction'"
+      >
+        {{ t('dropcatch.auctionTab') }}
+      </button>
+      <button
         :class="['px-4 py-2 text-sm font-medium rounded-md transition-colors', activeTab === 'watchlist' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700']"
         @click="activeTab = 'watchlist'"
       >
@@ -261,8 +300,8 @@ onMounted(async () => {
       </button>
     </div>
 
-    <!-- Drop List Tab -->
-    <div v-if="activeTab === 'droplist'" class="flex gap-6">
+    <!-- Drop List / Auction Tab -->
+    <div v-if="activeTab === 'droplist' || activeTab === 'auction'" class="flex gap-6">
       <!-- Filter sidebar -->
       <div
         :class="['shrink-0 transition-all duration-200', showFilters ? 'w-64' : 'w-0 overflow-hidden']"
@@ -293,48 +332,59 @@ onMounted(async () => {
               class="w-full h-9 px-3 text-sm border border-gray-200 rounded-lg bg-gray-50 input-focus"
             >
               <option value="">{{ t('dropcatch.allTypes') }}</option>
-              <option v-for="tld in availableTlds" :key="tld" :value="tld">{{ tld }}</option>
+              <option v-for="tldOpt in availableTlds" :key="tldOpt" :value="tldOpt">{{ tldOpt }}</option>
             </select>
           </div>
 
-          <!-- Length range -->
+          <!-- Length quick filters -->
           <div>
             <label class="block text-xs font-medium text-gray-600 mb-2">{{ t('dropcatch.lengthRange') }}</label>
-            <div class="flex gap-2">
-              <input
-                v-model.number="minLength"
-                type="number"
-                min="1"
-                max="63"
-                :placeholder="t('dropcatch.minLength')"
-                class="w-1/2 h-9 px-3 text-sm border border-gray-200 rounded-lg bg-gray-50 input-focus"
-                @change="applyRangeFilters"
-              />
-              <input
-                v-model.number="maxLength"
-                type="number"
-                min="1"
-                max="63"
-                :placeholder="t('dropcatch.maxLength')"
-                class="w-1/2 h-9 px-3 text-sm border border-gray-200 rounded-lg bg-gray-50 input-focus"
-                @change="applyRangeFilters"
-              />
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', !lengthFilter ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setLengthFilter(undefined)"
+              >
+                {{ t('dropcatch.allDomains') }}
+              </button>
+              <button
+                v-for="len in [1, 2, 3, 4, 5]"
+                :key="len"
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', lengthFilter === len ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setLengthFilter(len)"
+              >
+                {{ t(`dropcatch.chars${len}`) }}
+              </button>
             </div>
           </div>
 
-          <!-- Character type -->
-          <div>
-            <label class="block text-xs font-medium text-gray-600 mb-2">{{ t('dropcatch.charType') }}</label>
-            <div class="space-y-1.5">
-              <label v-for="opt in [
-                { value: 'all', label: t('dropcatch.allTypes') },
-                { value: 'pureLetters', label: t('dropcatch.pureLetters') },
-                { value: 'pureNumbers', label: t('dropcatch.pureNumbers') },
-                { value: 'noHyphens', label: t('dropcatch.noHyphens') },
-              ]" :key="opt.value" class="flex items-center gap-2 cursor-pointer">
-                <input v-model="charType" type="radio" :value="opt.value" class="text-blue-600" />
-                <span class="text-sm text-gray-700">{{ opt.label }}</span>
-              </label>
+          <!-- Drop within filter (only for droplist) -->
+          <div v-if="activeTab === 'droplist'">
+            <label class="block text-xs font-medium text-gray-600 mb-2">{{ t('dropcatch.daysUntilDrop') }}</label>
+            <div class="flex flex-wrap gap-1.5">
+              <button
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', dropWithinFilter === -1 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setDropWithin(-1)"
+              >
+                {{ t('dropcatch.allDomains') }}
+              </button>
+              <button
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', dropWithinFilter === 0 ? 'bg-red-50 text-red-700 border-red-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setDropWithin(0)"
+              >
+                {{ t('dropcatch.today') }}
+              </button>
+              <button
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', dropWithinFilter === 10 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setDropWithin(10)"
+              >
+                {{ t('dropcatch.within10d') }}
+              </button>
+              <button
+                :class="['px-2.5 py-1 text-xs rounded-md border transition-colors', dropWithinFilter === 30 ? 'bg-blue-50 text-blue-700 border-blue-200' : 'text-gray-500 border-gray-200 hover:bg-gray-50']"
+                @click="setDropWithin(30)"
+              >
+                {{ t('dropcatch.within30d') }}
+              </button>
             </div>
           </div>
 
@@ -361,7 +411,14 @@ onMounted(async () => {
               <option value="">{{ t('dropcatch.allTypes') }}</option>
               <option value="pending_delete">{{ t('dropcatch.pendingDelete') }}</option>
               <option value="expiring">{{ t('dropcatch.expiring') }}</option>
+              <option value="expired">{{ t('domains.status.expired') }}</option>
+              <option value="available">{{ t('whois.notRegistered') }}</option>
             </select>
+          </div>
+
+          <!-- Info -->
+          <div class="text-xs text-gray-400 pt-2 border-t border-gray-100">
+            {{ t('dropcatch.letterOnly') }} &middot; 1-5
           </div>
         </div>
       </div>
@@ -433,7 +490,7 @@ onMounted(async () => {
                   </div>
                 </td>
                 <td class="text-center px-3 py-3 text-gray-600 hidden sm:table-cell">{{ d.domain_length }}</td>
-                <td class="text-center px-3 py-3 text-gray-500 hidden md:table-cell">{{ d.drop_date }}</td>
+                <td class="text-center px-3 py-3 text-gray-500 hidden md:table-cell">{{ d.drop_date ? d.drop_date.split('T')[0] : '-' }}</td>
                 <td class="text-center px-3 py-3">
                   <span :class="daysBadgeClass(d.days_until_drop)">
                     {{ d.days_until_drop !== null ? d.days_until_drop + 'd' : '-' }}
@@ -444,7 +501,7 @@ onMounted(async () => {
                 </td>
                 <td class="text-center px-3 py-3 hidden lg:table-cell">
                   <span :class="['inline-flex px-2 py-0.5 text-xs font-medium rounded-full', statusClass(d.status)]">
-                    {{ d.status === 'pending_delete' ? t('dropcatch.pendingDelete') : t('dropcatch.expiring') }}
+                    {{ statusLabel(d.status) }}
                   </span>
                 </td>
                 <td class="text-right px-4 py-3">

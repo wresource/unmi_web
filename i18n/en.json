@@ -809,7 +809,21 @@
     "tldDistribution": "TLD Distribution",
     "lengthDistribution": "Length Distribution",
     "dataSource": "Data Source",
-    "dataSourceDesc": "Data from public domain registration sources, for reference only"
+    "dataSourceDesc": "Data from public domain registration sources, for reference only",
+    "today": "Expiring Today",
+    "within10d": "Within 10 Days",
+    "within30d": "Within 30 Days",
+    "allDomains": "All",
+    "autoUpdate": "Data auto-updates daily",
+    "lastUpdate": "Last Update",
+    "auctionTab": "Auction Watch",
+    "monitoring": "Monitoring",
+    "letterOnly": "Letters Only",
+    "chars1": "1-char",
+    "chars2": "2-char",
+    "chars3": "3-char",
+    "chars4": "4-char",
+    "chars5": "5-char"
   },
 
   "daysRemaining": {
