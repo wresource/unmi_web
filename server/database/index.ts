@@ -239,6 +239,44 @@ function initDatabase(db: Database.Database) {
     );
     CREATE INDEX IF NOT EXISTS idx_domain_watchlist_account_id ON domain_watchlist(account_id);
 
+    CREATE TABLE IF NOT EXISTS device_auth (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      device_id TEXT NOT NULL,
+      device_name TEXT DEFAULT '',
+      device_fingerprint TEXT DEFAULT '',
+      user_agent TEXT DEFAULT '',
+      last_used_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE(account_id, device_id),
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_device_auth_account_id ON device_auth(account_id);
+
+    CREATE TABLE IF NOT EXISTS totp_config (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL UNIQUE,
+      secret TEXT NOT NULL,
+      is_enabled INTEGER DEFAULT 0,
+      backup_codes TEXT DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
+
+    CREATE TABLE IF NOT EXISTS passkey_credentials (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      credential_id TEXT NOT NULL UNIQUE,
+      public_key TEXT NOT NULL,
+      counter INTEGER DEFAULT 0,
+      device_name TEXT DEFAULT '',
+      transports TEXT DEFAULT '[]',
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      last_used_at TEXT,
+      FOREIGN KEY (account_id) REFERENCES accounts(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_passkey_account_id ON passkey_credentials(account_id);
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_domains_account_id ON domains(account_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_domains_account_domain ON domains(account_id, domain_name);
@@ -312,6 +350,14 @@ function initDatabase(db: Database.Database) {
   const dropCols = db.prepare("PRAGMA table_info(drop_domains)").all() as { name: string }[]
   if (dropCols.length > 0 && !dropCols.some(c => c.name === 'auction_price')) {
     db.exec(`ALTER TABLE drop_domains ADD COLUMN auction_price INTEGER DEFAULT 0`)
+  }
+
+  // Migration: add auth method flags
+  const acctCols = db.prepare("PRAGMA table_info(accounts)").all() as { name: string }[]
+  for (const col of ['totp_enabled', 'device_auth_enabled', 'passkey_enabled']) {
+    if (!acctCols.some(c => c.name === col)) {
+      db.exec(`ALTER TABLE accounts ADD COLUMN ${col} INTEGER DEFAULT 0`)
+    }
   }
 
   // Drop old unique constraint on domain_name if it exists (from original schema)

@@ -35,6 +35,7 @@ const navItems = computed(() => [
   { label: t('nav.emailSettings'), icon: 'material-symbols:mail', path: '/email-settings' },
   { label: t('nav.showcaseSettings'), icon: 'material-symbols:storefront', path: '/showcase-settings' },
   { label: t('nav.systemSettings'), icon: 'material-symbols:settings', path: '/settings' },
+  { label: t('nav.security'), icon: 'material-symbols:security', path: '/security' },
   { label: t('nav.aboutProject'), icon: 'material-symbols:info', path: '/about' },
 ])
 

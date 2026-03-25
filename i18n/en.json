@@ -54,7 +54,8 @@
     "collapseSidebar": "Collapse",
     "notifications": "Notifications",
     "emailSettings": "Email Alerts",
-    "dropcatch": "Domain Drop Catch"
+    "dropcatch": "Domain Drop Catch",
+    "security": "Security"
   },
 
   "header": {
@@ -87,7 +88,21 @@
       "passwordMismatch": "Passwords do not match",
       "loginFailed": "Login failed",
       "createFailed": "Creation failed"
-    }
+    },
+    "totpTitle": "Two-Factor Authentication",
+    "totpSubtitle": "Enter the 6-digit code from your authenticator",
+    "totpCode": "Verification Code",
+    "totpCodePlaceholder": "000000",
+    "useBackupCode": "Use Backup Code",
+    "backupCodePlaceholder": "XXXX-XXXX",
+    "verifying": "Verifying...",
+    "totpInvalid": "Invalid code",
+    "backupCodeInvalid": "Invalid backup code",
+    "loginWithPasskey": "Login with Passkey",
+    "passkeyNotSupported": "Passkey not supported in this browser",
+    "passkeyFailed": "Passkey authentication failed",
+    "cancelTotp": "Go Back",
+    "orDivider": "or"
   },
 
   "dashboard": {
@@ -844,6 +859,67 @@
     "apiUnavailableDesc": "Please set DropCatch API keys in environment variables",
     "apiSignupLink": "Sign up for DropCatch API",
     "clickForWhois": "Click for WHOIS info"
+  },
+
+  "security": {
+    "title": "Security Settings",
+    "subtitle": "Manage your authentication methods",
+
+    "totp": {
+      "title": "Two-Factor Authentication (TOTP)",
+      "desc": "Use authenticator apps like Google Authenticator for one-time codes",
+      "enabled": "Enabled",
+      "disabled": "Not Enabled",
+      "enable": "Enable 2FA",
+      "disable": "Disable 2FA",
+      "disableConfirm": "Are you sure you want to disable 2FA? This will reduce your account security.",
+      "setupTitle": "Set Up 2FA",
+      "step1": "Scan QR code with your authenticator app",
+      "step2": "Enter the 6-digit code to confirm",
+      "manualKey": "Manual Entry Key",
+      "verifyCode": "Verify Code",
+      "setupSuccess": "2FA enabled successfully",
+      "disableSuccess": "2FA disabled",
+      "backupCodes": "Backup Codes",
+      "backupCodesDesc": "Save these codes securely. Each can only be used once.",
+      "backupCodesRemaining": "{n} backup codes remaining",
+      "regenerate": "Regenerate Backup Codes",
+      "copyAll": "Copy All",
+      "enterPassword": "Enter password to confirm"
+    },
+
+    "device": {
+      "title": "Authorized Devices",
+      "desc": "Authorized devices can skip 2FA during login",
+      "count": "{n}/10 devices",
+      "current": "Current Device",
+      "lastUsed": "Last Used",
+      "addCurrent": "Authorize This Device",
+      "remove": "Remove",
+      "removeConfirm": "Remove this device authorization?",
+      "maxReached": "Maximum device limit reached (10)",
+      "added": "Device authorized",
+      "removed": "Device removed",
+      "noDevices": "No authorized devices"
+    },
+
+    "passkey": {
+      "title": "Passkey",
+      "desc": "Login with fingerprint, face recognition, or security key",
+      "add": "Add Passkey",
+      "addTitle": "Register New Passkey",
+      "nameLabel": "Passkey Name",
+      "namePlaceholder": "e.g. MacBook, iPhone",
+      "register": "Register",
+      "registering": "Registering...",
+      "added": "Passkey added",
+      "remove": "Remove",
+      "removeConfirm": "Remove this passkey?",
+      "removed": "Passkey removed",
+      "notSupported": "Passkey not supported in this browser",
+      "noPasskeys": "No passkeys",
+      "lastUsed": "Last Used"
+    }
   },
 
   "daysRemaining": {

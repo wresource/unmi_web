@@ -29,5 +29,8 @@ export default defineNuxtConfig({
   },
   runtimeConfig: {
     dbPath: './data/domain-manager.db',
+    webauthnRpId: process.env.WEBAUTHN_RP_ID || 'beta.unmi.io',
+    webauthnRpName: process.env.WEBAUTHN_RP_NAME || 'UnMi Domain Manager',
+    webauthnOrigin: process.env.WEBAUTHN_ORIGIN || 'https://beta.unmi.io',
   },
 })
