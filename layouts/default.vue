@@ -31,6 +31,7 @@ const navItems = computed(() => [
   { label: t('nav.whoisQuery'), icon: 'material-symbols:search', path: '/whois' },
   { label: t('nav.backupSync'), icon: 'material-symbols:backup', path: '/backup-sync' },
   { label: t('notifications.title'), icon: 'material-symbols:notifications', path: '/notifications' },
+  { label: t('nav.emailSettings'), icon: 'material-symbols:mail', path: '/email-settings' },
   { label: t('nav.showcaseSettings'), icon: 'material-symbols:storefront', path: '/showcase-settings' },
   { label: t('nav.systemSettings'), icon: 'material-symbols:settings', path: '/settings' },
   { label: t('nav.aboutProject'), icon: 'material-symbols:info', path: '/about' },

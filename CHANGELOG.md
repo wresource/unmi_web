@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.3.0 (2026-03-25)
+
+### 新增功能
+
+#### 邮件通知系统
+- 完整的 SMTP 发件邮箱配置，支持 30+ 常见邮箱服务商自动识别
+- 邮箱后缀下拉选择（QQ、163、Gmail、Outlook 等），自动填充 SMTP 服务器配置
+- 自定义域名 SMTP 自动发现（通过 DNS MX 记录）
+- 收件邮箱配置，支持与发件邮箱不同
+- 通知类型开关：7天到期提醒、30天到期提醒、已过期提醒
+- 定期总结邮件：支持每天/每周/每月频率
+- 测试邮件发送（含速率限制，每 IP 每分钟 1 次）
+- 立即发送资产总结邮件
+- 邮件模板：到期提醒 + 资产总结，HTML 格式美化
+
+#### 新增页面
+- 邮件提醒设置页面（`/email-settings`）
+- 侧栏导航新增"邮件提醒"入口
+
+#### 新增 API
+- `GET /api/email/suffixes` - 获取已知邮箱后缀列表
+- `POST /api/email/discover` - 自动发现 SMTP 配置
+- `POST /api/email/test` - 发送测试邮件
+- `GET /api/email/settings` - 获取邮件设置
+- `PUT /api/email/settings` - 保存邮件设置
+- `POST /api/email/send-summary` - 发送资产总结邮件
+
+#### 依赖
+- 新增 `nodemailer` ^6.9.0
+
+---
+
 ## v1.2.0 (2026-03-25)
 
 ### 修复与改进

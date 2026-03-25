@@ -52,7 +52,8 @@
     "systemSettings": "系统设置",
     "aboutProject": "关于项目",
     "collapseSidebar": "收起侧栏",
-    "notifications": "通知中心"
+    "notifications": "通知中心",
+    "emailSettings": "邮件提醒"
   },
 
   "header": {
@@ -717,6 +718,44 @@
     "expiry30dEnabled": "30天内到期提醒",
     "dailySummaryEnabled": "每日资产总结",
     "settingsSaved": "设置已保存"
+  },
+
+  "email": {
+    "title": "邮件提醒",
+    "smtpConfig": "发件邮箱配置",
+    "emailPrefix": "邮箱账号",
+    "emailSuffix": "邮箱后缀",
+    "customDomain": "自定义域名",
+    "authCode": "授权码",
+    "authCodeHint": "非登录密码，需要在邮箱设置中开启 SMTP 并获取授权码",
+    "smtpHost": "SMTP 服务器",
+    "smtpPort": "端口",
+    "smtpSecure": "SSL 加密",
+    "discoverSmtp": "自动发现",
+    "discovering": "发现中...",
+    "smtpFound": "已找到 SMTP 配置",
+    "smtpNotFound": "未找到 SMTP 配置，请手动填写",
+    "recipient": "收件邮箱",
+    "recipientHint": "接收通知的邮箱地址",
+    "notificationTypes": "通知类型",
+    "expiry7d": "7天内到期提醒",
+    "expiry30d": "30天内到期提醒",
+    "expiredAlert": "已过期域名提醒",
+    "summarySchedule": "定期总结",
+    "scheduleNever": "不发送",
+    "scheduleDaily": "每天",
+    "scheduleWeekly": "每周",
+    "scheduleMonthly": "每月",
+    "scheduleDesc": "按选定频率发送域名资产总结邮件",
+    "testEmail": "发送测试",
+    "testing": "发送中...",
+    "testSuccess": "测试邮件已发送，请查收",
+    "testFailed": "发送失败",
+    "saveSettings": "保存设置",
+    "saved": "设置已保存",
+    "sendSummaryNow": "立即发送总结",
+    "summarySuccess": "总结邮件已发送",
+    "summaryFailed": "总结邮件发送失败"
   },
 
   "daysRemaining": {

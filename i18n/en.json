@@ -52,7 +52,8 @@
     "systemSettings": "Settings",
     "aboutProject": "About",
     "collapseSidebar": "Collapse",
-    "notifications": "Notifications"
+    "notifications": "Notifications",
+    "emailSettings": "Email Alerts"
   },
 
   "header": {
@@ -717,6 +718,44 @@
     "expiry30dEnabled": "30-day expiry alert",
     "dailySummaryEnabled": "Daily asset summary",
     "settingsSaved": "Settings saved"
+  },
+
+  "email": {
+    "title": "Email Notifications",
+    "smtpConfig": "SMTP Configuration",
+    "emailPrefix": "Email Account",
+    "emailSuffix": "Email Provider",
+    "customDomain": "Custom Domain",
+    "authCode": "Authorization Code",
+    "authCodeHint": "Not your login password. Enable SMTP in your email settings to get an authorization code.",
+    "smtpHost": "SMTP Server",
+    "smtpPort": "Port",
+    "smtpSecure": "SSL Encryption",
+    "discoverSmtp": "Auto-discover",
+    "discovering": "Discovering...",
+    "smtpFound": "SMTP configuration found",
+    "smtpNotFound": "SMTP not found, please configure manually",
+    "recipient": "Recipient Email",
+    "recipientHint": "Email address to receive notifications",
+    "notificationTypes": "Notification Types",
+    "expiry7d": "7-day expiry alert",
+    "expiry30d": "30-day expiry alert",
+    "expiredAlert": "Expired domain alert",
+    "summarySchedule": "Summary Schedule",
+    "scheduleNever": "Never",
+    "scheduleDaily": "Daily",
+    "scheduleWeekly": "Weekly",
+    "scheduleMonthly": "Monthly",
+    "scheduleDesc": "Send portfolio summary at selected frequency",
+    "testEmail": "Send Test",
+    "testing": "Sending...",
+    "testSuccess": "Test email sent, please check your inbox",
+    "testFailed": "Send failed",
+    "saveSettings": "Save Settings",
+    "saved": "Settings saved",
+    "sendSummaryNow": "Send Summary Now",
+    "summarySuccess": "Summary email sent",
+    "summaryFailed": "Summary email failed"
   },
 
   "daysRemaining": {
