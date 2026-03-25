@@ -18,6 +18,7 @@ module.exports = {
         // Sign up at https://www.dropcatch.com/hiw/dropcatch-api
         // DROPCATCH_CLIENT_ID: 'your_client_id',
         // DROPCATCH_CLIENT_SECRET: 'your_client_secret',
+        // GITHUB_TOKEN: 'your_github_token',  // For releases: 'your_client_secret',
       },
       instances: 1,
       exec_mode: 'fork',
