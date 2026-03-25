@@ -1,14 +1,52 @@
+// Default session timeout: 2 hours (in milliseconds)
+const DEFAULT_SESSION_TIMEOUT = 2 * 60 * 60 * 1000
+
+function getSessionTimeout(): number {
+  if (!import.meta.client) return DEFAULT_SESSION_TIMEOUT
+  try {
+    const saved = localStorage.getItem('session_timeout')
+    if (saved) return parseInt(saved) || DEFAULT_SESSION_TIMEOUT
+  } catch {}
+  return DEFAULT_SESSION_TIMEOUT
+}
+
 function saveSession(id: number, name: string) {
   if (import.meta.client) {
-    localStorage.setItem('auth_session', JSON.stringify({ accountId: id, accountName: name }))
+    localStorage.setItem('auth_session', JSON.stringify({
+      accountId: id,
+      accountName: name,
+      lastActivity: Date.now(),
+      timeout: getSessionTimeout(),
+    }))
   }
+}
+
+function touchSession() {
+  if (!import.meta.client) return
+  try {
+    const raw = localStorage.getItem('auth_session')
+    if (raw) {
+      const session = JSON.parse(raw)
+      session.lastActivity = Date.now()
+      localStorage.setItem('auth_session', JSON.stringify(session))
+    }
+  } catch {}
 }
 
 function loadSession(): { accountId: number; accountName: string } | null {
   if (import.meta.client) {
     try {
       const raw = localStorage.getItem('auth_session')
-      if (raw) return JSON.parse(raw)
+      if (!raw) return null
+      const session = JSON.parse(raw)
+      // Check expiry
+      const timeout = session.timeout || DEFAULT_SESSION_TIMEOUT
+      const lastActivity = session.lastActivity || 0
+      if (lastActivity > 0 && (Date.now() - lastActivity) > timeout) {
+        localStorage.removeItem('auth_session')
+        return null
+      }
+      return session
     } catch {}
   }
   return null

@@ -15,6 +15,30 @@ const passwordForm = ref({
 })
 const changingPassword = ref(false)
 const autoLockTimeout = ref(30)
+const sessionTimeout = ref(7200000) // default 2 hours
+
+// Load saved session timeout
+onMounted(() => {
+  try {
+    const saved = localStorage.getItem('session_timeout')
+    if (saved) sessionTimeout.value = parseInt(saved) || 7200000
+  } catch {}
+})
+
+function saveSessionTimeout() {
+  try {
+    localStorage.setItem('session_timeout', String(sessionTimeout.value))
+    // Update current session
+    const raw = localStorage.getItem('auth_session')
+    if (raw) {
+      const session = JSON.parse(raw)
+      session.timeout = sessionTimeout.value
+      session.lastActivity = Date.now()
+      localStorage.setItem('auth_session', JSON.stringify(session))
+    }
+    toast.success(t('common.saved'))
+  } catch {}
+}
 
 // General
 const defaultCurrency = ref('CNY')
@@ -203,6 +227,21 @@ const selectClass = 'h-10 w-full rounded-lg border border-gray-200 bg-gray-50 px
               <option v-for="opt in autoLockOptions" :key="opt.value" :value="opt.value">
                 {{ opt.label }}
               </option>
+            </select>
+          </div>
+
+          <!-- Session timeout -->
+          <div>
+            <label class="mb-1 block text-sm font-medium text-gray-700">{{ t('settings.sessionTimeout') }}</label>
+            <p class="text-xs text-gray-400 mb-2">{{ t('settings.sessionTimeoutDesc') }}</p>
+            <select v-model="sessionTimeout" :class="selectClass" class="max-w-xs" @change="saveSessionTimeout">
+              <option :value="1800000">{{ t('settings.timeout30m') }}</option>
+              <option :value="3600000">{{ t('settings.timeout1h') }}</option>
+              <option :value="7200000">{{ t('settings.timeout2h') }}</option>
+              <option :value="14400000">{{ t('settings.timeout4h') }}</option>
+              <option :value="28800000">{{ t('settings.timeout8h') }}</option>
+              <option :value="86400000">{{ t('settings.timeout24h') }}</option>
+              <option :value="604800000">{{ t('settings.timeout7d') }}</option>
             </select>
           </div>
         </div>

@@ -134,7 +134,12 @@ function formatEndTime(dateStr: string): string {
   if (!dateStr) return '-'
   const d = new Date(dateStr)
   if (isNaN(d.getTime())) return '-'
-  return d.toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' })
+  // Show in ET (DropCatch timezone) and local time
+  const et = d.toLocaleString('en-US', {
+    timeZone: 'America/New_York',
+    month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hour12: false,
+  })
+  return `${et} ET`
 }
 
 function timeRemaining(dateStr: string): string {
