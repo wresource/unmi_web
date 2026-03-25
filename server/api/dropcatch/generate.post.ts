@@ -15,7 +15,7 @@ export default defineEventHandler(async (event) => {
   const body = await readBody(event).catch(() => ({})) || {}
   const tlds = Array.isArray(body.tlds) ? body.tlds as string[] : ['.com', '.net', '.org']
   const domains = Array.isArray(body.domains) ? body.domains as string[] : undefined
-  const maxPerTld = typeof body.maxPerTld === 'number' ? Math.min(body.maxPerTld, 100) : 100
+  const maxPerTld = typeof body.maxPerTld === 'number' ? Math.min(body.maxPerTld, 2000) : 2000
 
   // Fetch real drop domains via RDAP checks
   const imported = await fetchRealDropDomains({

@@ -494,7 +494,7 @@ export async function fetchRealDropDomains(options?: {
   isRefreshing = true
   try {
     const tlds = options?.tlds || ['.com', '.net', '.org']
-    const maxPerTld = options?.maxPerTld || 100
+    const maxPerTld = options?.maxPerTld || 2000
 
     // Determine which domains to check
     let domainsToCheck: string[]
@@ -600,7 +600,7 @@ export async function fetchRealDropDomains(options?: {
         // Get auction data with real prices
         const auctions = await fetchDropCatchAuctions({
           tlds: tlds.map(t => t.replace(/^\./, '')),
-          maxResults: 100,
+          maxPerTld: 2000,
         })
 
         for (const a of auctions) {
@@ -749,8 +749,8 @@ export async function updateAuctionPrices(): Promise<number> {
 export function importDropDomains(domains: any[]): number {
   const db = useDatabase()
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO drop_domains (domain_name, tld, drop_date, status, source, estimated_value, auction_price, domain_length, has_numbers, has_hyphens, is_pure_letters, is_pure_numbers)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO drop_domains (domain_name, tld, drop_date, status, source, registrar, estimated_value, auction_price, domain_length, has_numbers, has_hyphens, is_pure_letters, is_pure_numbers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   let count = 0
@@ -771,6 +771,7 @@ export function importDropDomains(domains: any[]): number {
       stmt.run(
         d.domain_name, d.tld || analysis.tld, d.drop_date || '',
         d.status || 'pending_delete', d.source || 'rdap',
+        d.registrar || '',
         estValue, auctionPrice, analysis.length,
         analysis.hasNumbers ? 1 : 0, analysis.hasHyphens ? 1 : 0,
         analysis.isPureLetters ? 1 : 0, analysis.isPureNumbers ? 1 : 0

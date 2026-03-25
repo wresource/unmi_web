@@ -6,7 +6,7 @@ export default defineEventHandler(async (event) => {
   // Auto-refresh once per day — runs in background, does NOT block this response
   if (needsRefresh()) {
     markRefreshed() // Mark immediately to prevent concurrent triggers
-    fetchRealDropDomains({ tlds: ['.com', '.net', '.org'], maxPerTld: 100 })
+    fetchRealDropDomains({ tlds: ['.com', '.net', '.org'], maxPerTld: 2000 })
       .then(count => console.log(`[dropcatch] Auto-refresh complete: ${count} domains`))
       .catch(err => console.warn('[dropcatch] Auto-refresh failed:', err.message))
   }
@@ -25,7 +25,7 @@ export default defineEventHandler(async (event) => {
   const sortBy = (query.sortBy as string) || 'drop_date'
   const sortOrder = (query.sortOrder as string)?.toUpperCase() === 'DESC' ? 'DESC' : 'ASC'
   const page = Math.max(1, parseInt(query.page as string) || 1)
-  const pageSize = Math.min(100, Math.max(1, parseInt(query.pageSize as string) || 20))
+  const pageSize = Math.min(200, Math.max(1, parseInt(query.pageSize as string) || 50))
 
   const allowedSort = ['domain_name', 'drop_date', 'estimated_value', 'domain_length', 'created_at']
   const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'drop_date'
@@ -77,10 +77,11 @@ export default defineEventHandler(async (event) => {
     const now = new Date()
     const futureDate = new Date(now.getTime() + dropWithin * 86400000)
     if (dropWithin === 0) {
-      // Today only
-      const todayStr = now.toISOString().split('T')[0]
-      conditions.push("drop_date LIKE ?")
-      params.push(`${todayStr}%`)
+      // Within 24 hours (today + tonight)
+      const tomorrow = new Date(now.getTime() + 86400000)
+      conditions.push("drop_date != ''")
+      conditions.push("drop_date <= ?")
+      params.push(tomorrow.toISOString())
     } else {
       conditions.push("drop_date != ''")
       conditions.push("drop_date <= ?")
