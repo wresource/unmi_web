@@ -1,4 +1,5 @@
 import { useDatabase } from '~/server/database'
+import { isDropCatchConfigured, fetchDropCatchAuctions, fetchDropCatchDropping } from './dropcatch-api'
 
 // ============================================================================
 // RDAP Bootstrap (mirrors whois.ts logic but exported for dropcatch use)
@@ -532,6 +533,7 @@ export async function fetchRealDropDomains(options?: {
       expiryDate?: string
       registrar?: string
       source: string
+      auctionPrice?: number
     }[] = []
 
     // Check domains via RDAP in parallel batches of 10 for speed
@@ -588,7 +590,50 @@ export async function fetchRealDropDomains(options?: {
       await new Promise(r => setTimeout(r, RDAP_REQUEST_DELAY))
     }
 
-    console.log(`[dropcatch] Scanned ${checksCount} domains, found ${found.length} results`)
+    console.log(`[dropcatch] RDAP scanned ${checksCount} domains, found ${found.length} results`)
+
+    // Source 2: DropCatch API (if configured)
+    if (isDropCatchConfigured()) {
+      try {
+        console.log('[dropcatch] Fetching from DropCatch API...')
+
+        // Get auction data with real prices
+        const auctions = await fetchDropCatchAuctions({
+          tlds: tlds.map(t => t.replace(/^\./, '')),
+          maxResults: 100,
+        })
+
+        for (const a of auctions) {
+          found.push({
+            domain_name: a.domain_name,
+            status: 'auction',
+            expiryDate: a.end_time,
+            registrar: `DropCatch (${a.bidders} bidders)`,
+            source: 'dropcatch',
+            auctionPrice: a.auction_price,
+          })
+        }
+
+        // Get dropping domain list
+        const dropping = await fetchDropCatchDropping()
+        for (const d of dropping) {
+          if (!found.some(f => f.domain_name === d.domain_name)) {
+            found.push({
+              domain_name: d.domain_name,
+              status: 'pending_delete',
+              expiryDate: d.drop_date,
+              registrar: '',
+              source: 'dropcatch',
+              auctionPrice: 0,
+            })
+          }
+        }
+
+        console.log(`[dropcatch] DropCatch: ${auctions.length} auctions, ${dropping.length} dropping`)
+      } catch (err) {
+        console.warn('[dropcatch] DropCatch API failed:', (err as Error).message)
+      }
+    }
 
     // Import found domains into database
     if (found.length > 0) {
@@ -600,6 +645,7 @@ export async function fetchRealDropDomains(options?: {
         source: d.source,
         registrar: d.registrar || '',
         estimated_value: 0,
+        auction_price: d.auctionPrice || 0,
       }))
 
       return importDropDomains(toImport)
@@ -690,9 +736,9 @@ export async function updateAuctionPrices(): Promise<number> {
       catchPrice = priceUsd + 3
     }
 
-    // Update all domains of this TLD
+    // Only update domains that don't already have a real auction price from DropCatch
     const result = db.prepare(
-      "UPDATE drop_domains SET auction_price = ? WHERE tld = ?"
+      "UPDATE drop_domains SET auction_price = ? WHERE tld = ? AND (source != 'dropcatch' OR auction_price = 0)"
     ).run(Math.round(catchPrice * 100) / 100, tld)
     updated += result.changes
   }
@@ -719,10 +765,13 @@ export function importDropDomains(domains: any[]): number {
 
       const estValue = d.estimated_value || 0
 
+      // Use real auction price from DropCatch API if available, otherwise use provided price
+      const auctionPrice = d.auction_price || 0
+
       stmt.run(
         d.domain_name, d.tld || analysis.tld, d.drop_date || '',
         d.status || 'pending_delete', d.source || 'rdap',
-        estValue, d.auction_price || 0, analysis.length,
+        estValue, auctionPrice, analysis.length,
         analysis.hasNumbers ? 1 : 0, analysis.hasHyphens ? 1 : 0,
         analysis.isPureLetters ? 1 : 0, analysis.isPureNumbers ? 1 : 0
       )

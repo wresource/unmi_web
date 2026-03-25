@@ -825,7 +825,15 @@
     "chars2": "2字母",
     "chars3": "3字母",
     "chars4": "4字母",
-    "chars5": "5字母"
+    "chars5": "5字母",
+    "apiConfigured": "DropCatch API 已连接",
+    "apiNotConfigured": "DropCatch API 未配置",
+    "apiNotConfiguredHint": "设置环境变量 DROPCATCH_CLIENT_ID 和 DROPCATCH_CLIENT_SECRET 以获取真实拍卖数据",
+    "bidders": "{n} 人出价",
+    "currentBid": "当前出价",
+    "sourceDropcatch": "DropCatch",
+    "sourceRdap": "RDAP",
+    "auctionEnds": "结束时间"
   },
 
   "daysRemaining": {

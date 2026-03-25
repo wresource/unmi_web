@@ -1,6 +1,7 @@
 import { defineEventHandler, createError, readBody } from 'h3'
 import { getAccountId } from '~/server/utils/account'
 import { fetchRealDropDomains, markRefreshed, updateAuctionPrices } from '~/server/utils/dropcatch'
+import { isDropCatchConfigured } from '~/server/utils/dropcatch-api'
 import { appraiseDomain } from '~/server/utils/appraisal'
 import { useDatabase } from '~/server/database'
 
@@ -63,5 +64,7 @@ export default defineEventHandler(async (event) => {
     console.warn('[dropcatch] Price update failed:', (err as Error).message)
   }
 
-  return { imported, appraised, priced }
+  const dropcatchApi = isDropCatchConfigured()
+
+  return { imported, appraised, priced, dropcatchApi }
 })

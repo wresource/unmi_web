@@ -825,7 +825,15 @@
     "chars2": "2-char",
     "chars3": "3-char",
     "chars4": "4-char",
-    "chars5": "5-char"
+    "chars5": "5-char",
+    "apiConfigured": "DropCatch API Connected",
+    "apiNotConfigured": "DropCatch API Not Configured",
+    "apiNotConfiguredHint": "Set DROPCATCH_CLIENT_ID and DROPCATCH_CLIENT_SECRET env vars for real auction data",
+    "bidders": "{n} bidders",
+    "currentBid": "Current Bid",
+    "sourceDropcatch": "DropCatch",
+    "sourceRdap": "RDAP",
+    "auctionEnds": "Auction Ends"
   },
 
   "daysRemaining": {

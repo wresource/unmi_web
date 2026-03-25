@@ -1,5 +1,37 @@
 # Changelog
 
+## v1.5 (2026-03-25)
+
+### DropCatch.com 真实拍卖 API 集成
+
+#### API 集成
+- 新增 DropCatch.com API 客户端（`server/utils/dropcatch-api.ts`）
+- 支持 API 令牌自动获取和缓存（30 分钟有效期，提前 2 分钟刷新）
+- 集成真实拍卖数据：当前出价、出价人数、拍卖类型
+- 集成即将删除域名下载列表（CSV/ZIP 解析）
+- 环境变量配置：`DROPCATCH_CLIENT_ID`、`DROPCATCH_CLIENT_SECRET`
+
+#### 数据采集增强
+- 在现有 RDAP 扫描基础上，新增 DropCatch API 作为第二数据源
+- DropCatch 拍卖域名使用真实出价作为 auction_price
+- 未配置 API 时系统仍使用 RDAP 正常运行
+
+#### API 端点
+- 新增 `GET /api/dropcatch/api-status` —— 检查 API 配置和认证状态
+- `POST /api/dropcatch/generate` 响应中新增 `dropcatchApi` 字段
+- `GET /api/dropcatch/domains` 支持多数据源逗号分隔筛选
+
+#### 页面改进
+- 新增 DropCatch API 连接状态指示器（绿色/灰色标签）
+- 域名列表中显示 DropCatch 来源标签（橙色）
+- 显示真实出价金额和"当前出价"标签
+- 拍卖监控 Tab 同时显示 RDAP 和 DropCatch 数据
+
+#### i18n
+- 新增 7 个翻译键（中英双语）：API 状态、出价人数、当前出价、数据源标签等
+
+---
+
 ## v1.4.2 (2026-03-25)
 
 ### 重写抢注数据采集系统

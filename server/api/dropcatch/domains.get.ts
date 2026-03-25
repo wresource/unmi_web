@@ -62,8 +62,14 @@ export default defineEventHandler(async (event) => {
     params.push(status)
   }
   if (source) {
-    conditions.push('source = ?')
-    params.push(source)
+    const sources = source.split(',').map((s: string) => s.trim()).filter(Boolean)
+    if (sources.length === 1) {
+      conditions.push('source = ?')
+      params.push(sources[0])
+    } else if (sources.length > 1) {
+      conditions.push(`source IN (${sources.map(() => '?').join(',')})`)
+      params.push(...sources)
+    }
   }
 
   // Drop within N days filter

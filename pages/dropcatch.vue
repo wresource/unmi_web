@@ -32,6 +32,17 @@ const watchlist = ref<any[]>([])
 const watchlistDomainNames = ref<Set<string>>(new Set())
 const lastRefresh = ref<string | null>(null)
 
+// DropCatch API status
+const apiStatus = ref<{ configured: boolean; authenticated: boolean; error?: string } | null>(null)
+
+async function fetchApiStatus() {
+  try {
+    apiStatus.value = await $fetch('/api/dropcatch/api-status')
+  } catch {
+    apiStatus.value = null
+  }
+}
+
 // Watchlist dialog
 const showWatchlistDialog = ref(false)
 const watchlistDomainInput = ref('')
@@ -65,9 +76,9 @@ async function fetchDomains() {
 
     // Source filter based on tab
     if (activeTab.value === 'auction') {
-      query.source = 'auction'
+      query.source = 'auction,dropcatch'
     } else if (activeTab.value === 'droplist') {
-      query.source = 'rdap'
+      query.source = 'rdap,dropcatch'
     }
 
     // Drop within filter (only for droplist tab)
@@ -204,6 +215,7 @@ function applyRangeFilters() {
 function statusClass(status: string) {
   if (status === 'pending_delete') return 'bg-red-100 text-red-700'
   if (status === 'registered') return 'bg-purple-100 text-purple-700'
+  if (status === 'auction') return 'bg-orange-100 text-orange-700'
   return 'bg-yellow-100 text-yellow-700'
 }
 
@@ -213,6 +225,7 @@ function statusLabel(status: string) {
   if (status === 'registered') return t('dropcatch.monitoring')
   if (status === 'expired') return t('domains.status.expired')
   if (status === 'available') return t('whois.notRegistered')
+  if (status === 'auction') return t('dropcatch.auctionTab')
   return t('dropcatch.expiring')
 }
 
@@ -239,7 +252,7 @@ function formatLastRefresh(iso: string) {
 
 // Init
 onMounted(async () => {
-  await Promise.all([fetchDomains(), fetchStats(), fetchWatchlist()])
+  await Promise.all([fetchDomains(), fetchStats(), fetchWatchlist(), fetchApiStatus()])
 })
 </script>
 
@@ -252,6 +265,25 @@ onMounted(async () => {
         <p class="text-sm text-gray-500 mt-1">{{ t('dropcatch.subtitle') }}</p>
       </div>
       <div class="flex items-center gap-3">
+        <!-- DropCatch API status indicator -->
+        <div v-if="apiStatus" class="flex items-center gap-1.5">
+          <span
+            v-if="apiStatus.configured && apiStatus.authenticated"
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-green-100 text-green-700"
+            :title="t('dropcatch.apiConfigured')"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+            {{ t('dropcatch.apiConfigured') }}
+          </span>
+          <span
+            v-else
+            class="inline-flex items-center gap-1 px-2 py-0.5 text-xs font-medium rounded-full bg-gray-100 text-gray-500"
+            :title="t('dropcatch.apiNotConfiguredHint')"
+          >
+            <span class="w-1.5 h-1.5 rounded-full bg-gray-400"></span>
+            {{ t('dropcatch.apiNotConfigured') }}
+          </span>
+        </div>
         <span class="text-xs text-gray-400">
           {{ t('dropcatch.autoUpdate') }}
           <template v-if="lastRefresh">
@@ -488,7 +520,12 @@ onMounted(async () => {
                   <div class="flex items-center gap-2">
                     <span class="font-mono font-medium text-gray-900">{{ d.domain_name.split('.')[0] }}</span>
                     <span class="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-blue-50 text-blue-600">{{ d.tld }}</span>
+                    <span
+                      v-if="d.source === 'dropcatch'"
+                      class="inline-flex px-1.5 py-0.5 text-xs font-medium rounded bg-orange-50 text-orange-600"
+                    >{{ t('dropcatch.sourceDropcatch') }}</span>
                   </div>
+                  <div v-if="d.source === 'dropcatch' && d.registrar" class="text-xs text-gray-400 mt-0.5">{{ d.registrar }}</div>
                 </td>
                 <td class="text-center px-3 py-3 text-gray-600 hidden sm:table-cell">{{ d.domain_length }}</td>
                 <td class="text-center px-3 py-3 text-gray-500 hidden md:table-cell">{{ d.drop_date ? d.drop_date.split('T')[0] : '-' }}</td>
@@ -498,7 +535,10 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td class="text-right px-3 py-3 hidden sm:table-cell">
-                  <span class="font-bold text-blue-600">{{ d.auction_price ? '$' + d.auction_price : '-' }}</span>
+                  <div>
+                    <span class="font-bold text-blue-600">{{ d.auction_price ? '$' + d.auction_price : '-' }}</span>
+                    <div v-if="d.source === 'dropcatch' && d.auction_price" class="text-xs text-orange-500">{{ t('dropcatch.currentBid') }}</div>
+                  </div>
                 </td>
                 <td class="text-right px-3 py-3 hidden md:table-cell">
                   <span class="text-gray-500 text-sm">{{ formatValue(d.estimated_value) }}</span>
