@@ -161,11 +161,8 @@ export async function fetchAllAuctionsCsv(options?: {
       if (seen.has(fullDomain)) continue
       seen.add(fullDomain)
 
-      // DropCatch auctions end at 7:00 PM ET (Eastern Time) daily
-      // ET = UTC-4 (EDT, Mar-Nov) or UTC-5 (EST, Nov-Mar)
-      // 7PM EDT = 23:00 UTC, 7PM EST = 00:00 UTC next day
-      // Use EDT (UTC-4) as default since DropCatch is US-based
-      const endTimeUtc = endDate.includes('T') ? endDate : `${endDate}T23:00:00Z`
+      // DropCatch auctions end at 3:00 PM ET (Eastern Time) daily = 19:00 UTC
+      const endTimeUtc = endDate.includes('T') ? endDate : `${endDate}T19:00:00Z`
 
       results.push({
         domain_name: fullDomain,
