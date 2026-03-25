@@ -29,6 +29,14 @@ export default defineEventHandler(async (event) => {
   // Increment view count
   db.prepare('UPDATE domains SET view_count = view_count + 1 WHERE domain_name = ?').run(name.toLowerCase())
 
+  // Track daily view stats
+  const today = new Date().toISOString().split('T')[0]
+  db.prepare(`
+    INSERT INTO domain_views (domain_id, view_date, view_count)
+    VALUES (?, ?, 1)
+    ON CONFLICT(domain_id, view_date) DO UPDATE SET view_count = view_count + 1
+  `).run(domain.domain_id, today)
+
   // Get tags
   const tags = db.prepare(`
     SELECT t.name FROM domain_tags dt

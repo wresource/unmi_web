@@ -324,6 +324,67 @@ onMounted(() => {
         </div>
       </div>
 
+      <!-- Registrant Info -->
+      <div
+        v-if="domain.registrant_name || domain.registrant_org || domain.registrant_email || domain.registrant_phone || domain.registrant_country || domain.registrant_province || domain.registrant_city || domain.registrant_address || domain.admin_name || domain.admin_email || domain.tech_name || domain.tech_email"
+        class="bg-white rounded-xl shadow-sm border border-gray-200 p-6"
+      >
+        <h2 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Icon name="heroicons:user-circle" class="w-5 h-5 text-gray-400" />
+          {{ t('domains.form.registrantInfo') }}
+        </h2>
+        <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-6 gap-y-3">
+          <div v-if="domain.registrant_name" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantName') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_name }}</dd>
+          </div>
+          <div v-if="domain.registrant_org" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantOrg') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_org }}</dd>
+          </div>
+          <div v-if="domain.registrant_email" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantEmail') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_email }}</dd>
+          </div>
+          <div v-if="domain.registrant_phone" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantPhone') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_phone }}</dd>
+          </div>
+          <div v-if="domain.registrant_country" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantCountry') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_country }}</dd>
+          </div>
+          <div v-if="domain.registrant_province" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantProvince') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_province }}</dd>
+          </div>
+          <div v-if="domain.registrant_city" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantCity') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_city }}</dd>
+          </div>
+          <div v-if="domain.registrant_address" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.registrantAddress') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.registrant_address }}</dd>
+          </div>
+          <div v-if="domain.admin_name" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.adminName') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.admin_name }}</dd>
+          </div>
+          <div v-if="domain.admin_email" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.adminEmail') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.admin_email }}</dd>
+          </div>
+          <div v-if="domain.tech_name" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.techName') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.tech_name }}</dd>
+          </div>
+          <div v-if="domain.tech_email" class="flex justify-between sm:flex-col">
+            <dt class="text-sm text-gray-500">{{ t('domains.form.techEmail') }}</dt>
+            <dd class="text-sm font-medium text-gray-900">{{ domain.tech_email }}</dd>
+          </div>
+        </dl>
+      </div>
+
       <!-- Renewal Records -->
       <div class="bg-white rounded-xl shadow-sm border border-gray-200">
         <div class="px-6 py-4 border-b border-gray-200 flex items-center justify-between">

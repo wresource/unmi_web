@@ -51,7 +51,8 @@
     "showcaseSettings": "展示设置",
     "systemSettings": "系统设置",
     "aboutProject": "关于项目",
-    "collapseSidebar": "收起侧栏"
+    "collapseSidebar": "收起侧栏",
+    "notifications": "通知中心"
   },
 
   "header": {
@@ -173,7 +174,20 @@
       "updateFailed": "更新失败",
       "currencyCNY": "CNY (人民币)",
       "currencyUSD": "USD (美元)",
-      "expiryDaysPlaceholder": "例: 30"
+      "expiryDaysPlaceholder": "例: 30",
+      "registrantInfo": "注册人信息",
+      "registrantName": "注册人姓名",
+      "registrantOrg": "注册人组织",
+      "registrantEmail": "注册人邮箱",
+      "registrantPhone": "注册人电话",
+      "registrantCountry": "国家/地区",
+      "registrantProvince": "省份",
+      "registrantCity": "城市",
+      "registrantAddress": "地址",
+      "adminName": "管理联系人",
+      "adminEmail": "管理联系人邮箱",
+      "techName": "技术联系人",
+      "techEmail": "技术联系人邮箱"
     },
 
     "detail": {
@@ -410,7 +424,18 @@
     "invalid": "无效",
     "noInquiries": "暂无询盘记录",
     "noCategories": "暂无分类，点击上方按钮添加",
-    "budget": "预算"
+    "budget": "预算",
+    "viewStats": "浏览统计",
+    "totalViews": "总浏览量",
+    "viewTrend": "浏览趋势",
+    "topViewed": "热门域名",
+    "granularity": "时间粒度",
+    "byDay": "按天",
+    "byWeek": "按周",
+    "byMonth": "按月",
+    "last7d": "近7天",
+    "last30d": "近30天",
+    "last90d": "近90天"
   },
 
   "show": {
@@ -672,6 +697,26 @@
   "appraisal": {
     "title": "域名估值",
     "confidence": "置信度"
+  },
+
+  "notifications": {
+    "title": "通知中心",
+    "markAllRead": "全部标为已读",
+    "generateNotifications": "生成通知",
+    "generating": "生成中...",
+    "generated": "已生成 {n} 条通知",
+    "noNotifications": "暂无通知",
+    "all": "全部",
+    "expiryUrgent": "紧急到期",
+    "expiryWarning": "即将到期",
+    "expired": "已过期",
+    "dailySummary": "每日总结",
+    "unread": "{n} 条未读",
+    "settings": "通知设置",
+    "expiry7dEnabled": "7天内到期提醒",
+    "expiry30dEnabled": "30天内到期提醒",
+    "dailySummaryEnabled": "每日资产总结",
+    "settingsSaved": "设置已保存"
   },
 
   "daysRemaining": {

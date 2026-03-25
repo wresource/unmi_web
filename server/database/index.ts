@@ -48,6 +48,18 @@ function initDatabase(db: Database.Database) {
       hold_cost REAL DEFAULT 0,
       memo TEXT DEFAULT '',
       encrypted_data TEXT DEFAULT '',
+      registrant_name TEXT DEFAULT '',
+      registrant_org TEXT DEFAULT '',
+      registrant_email TEXT DEFAULT '',
+      registrant_phone TEXT DEFAULT '',
+      registrant_country TEXT DEFAULT '',
+      registrant_province TEXT DEFAULT '',
+      registrant_city TEXT DEFAULT '',
+      registrant_address TEXT DEFAULT '',
+      admin_name TEXT DEFAULT '',
+      admin_email TEXT DEFAULT '',
+      tech_name TEXT DEFAULT '',
+      tech_email TEXT DEFAULT '',
       is_public INTEGER DEFAULT 0,
       show_price REAL DEFAULT 0,
       price_type TEXT DEFAULT 'inquiry',
@@ -155,6 +167,39 @@ function initDatabase(db: Database.Database) {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
+    CREATE TABLE IF NOT EXISTS notifications (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL DEFAULT 0,
+      type TEXT NOT NULL,
+      title TEXT NOT NULL,
+      message TEXT NOT NULL DEFAULT '',
+      domain_id INTEGER,
+      domain_name TEXT DEFAULT '',
+      is_read INTEGER DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS idx_notifications_account_id ON notifications(account_id);
+    CREATE INDEX IF NOT EXISTS idx_notifications_is_read ON notifications(is_read);
+
+    CREATE TABLE IF NOT EXISTS notification_settings (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      account_id INTEGER NOT NULL,
+      setting_key TEXT NOT NULL,
+      setting_value TEXT NOT NULL DEFAULT '',
+      UNIQUE(account_id, setting_key)
+    );
+
+    CREATE TABLE IF NOT EXISTS domain_views (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      domain_id INTEGER NOT NULL,
+      view_date TEXT NOT NULL,
+      view_count INTEGER DEFAULT 1,
+      UNIQUE(domain_id, view_date),
+      FOREIGN KEY (domain_id) REFERENCES domains(id) ON DELETE CASCADE
+    );
+    CREATE INDEX IF NOT EXISTS idx_domain_views_domain_id ON domain_views(domain_id);
+    CREATE INDEX IF NOT EXISTS idx_domain_views_view_date ON domain_views(view_date);
+
     -- Indexes
     CREATE INDEX IF NOT EXISTS idx_domains_account_id ON domains(account_id);
     CREATE UNIQUE INDEX IF NOT EXISTS idx_domains_account_domain ON domains(account_id, domain_name);
@@ -214,6 +259,14 @@ function initDatabase(db: Database.Database) {
   }
   if (!domainCols.some(c => c.name === 'view_count')) {
     db.exec(`ALTER TABLE domains ADD COLUMN view_count INTEGER DEFAULT 0`)
+  }
+
+  // Migration: add registrant columns to domains table
+  const registrantCols = ['registrant_name', 'registrant_org', 'registrant_email', 'registrant_phone', 'registrant_country', 'registrant_province', 'registrant_city', 'registrant_address', 'admin_name', 'admin_email', 'tech_name', 'tech_email']
+  for (const col of registrantCols) {
+    if (!domainCols.some(c => c.name === col)) {
+      db.exec(`ALTER TABLE domains ADD COLUMN ${col} TEXT DEFAULT ''`)
+    }
   }
 
   // Drop old unique constraint on domain_name if it exists (from original schema)

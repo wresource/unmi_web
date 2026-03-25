@@ -40,8 +40,8 @@ export default defineEventHandler(async (event) => {
   })
 
   const stmt = db.prepare(`
-    INSERT INTO domains (account_id, domain_name, tld, registrar, registration_date, expiry_date, purchase_price, renewal_price, status, dns_servers, auto_renew, is_held, hold_cost, memo, encrypted_data, created_at, updated_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO domains (account_id, domain_name, tld, registrar, registration_date, expiry_date, purchase_price, renewal_price, status, dns_servers, auto_renew, is_held, hold_cost, memo, encrypted_data, registrant_name, registrant_org, registrant_email, registrant_phone, registrant_country, registrant_province, registrant_city, registrant_address, admin_name, admin_email, tech_name, tech_email, created_at, updated_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   const result = stmt.run(
@@ -60,6 +60,18 @@ export default defineEventHandler(async (event) => {
     body.hold_cost || 0,
     body.memo || '',
     encryptedData,
+    body.registrant_name || '',
+    body.registrant_org || '',
+    body.registrant_email || '',
+    body.registrant_phone || '',
+    body.registrant_country || '',
+    body.registrant_province || '',
+    body.registrant_city || '',
+    body.registrant_address || '',
+    body.admin_name || '',
+    body.admin_email || '',
+    body.tech_name || '',
+    body.tech_email || '',
     now,
     now
   )

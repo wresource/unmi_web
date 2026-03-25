@@ -51,7 +51,8 @@
     "showcaseSettings": "Showcase",
     "systemSettings": "Settings",
     "aboutProject": "About",
-    "collapseSidebar": "Collapse"
+    "collapseSidebar": "Collapse",
+    "notifications": "Notifications"
   },
 
   "header": {
@@ -173,7 +174,20 @@
       "updateFailed": "Update failed",
       "currencyCNY": "CNY (Yuan)",
       "currencyUSD": "USD (Dollar)",
-      "expiryDaysPlaceholder": "e.g. 30"
+      "expiryDaysPlaceholder": "e.g. 30",
+      "registrantInfo": "Registrant Information",
+      "registrantName": "Registrant Name",
+      "registrantOrg": "Registrant Organization",
+      "registrantEmail": "Registrant Email",
+      "registrantPhone": "Registrant Phone",
+      "registrantCountry": "Country/Region",
+      "registrantProvince": "Province/State",
+      "registrantCity": "City",
+      "registrantAddress": "Address",
+      "adminName": "Admin Contact",
+      "adminEmail": "Admin Email",
+      "techName": "Tech Contact",
+      "techEmail": "Tech Email"
     },
 
     "detail": {
@@ -410,7 +424,18 @@
     "invalid": "Invalid",
     "noInquiries": "No inquiries yet",
     "noCategories": "No categories. Click above to add one.",
-    "budget": "Budget"
+    "budget": "Budget",
+    "viewStats": "View Statistics",
+    "totalViews": "Total Views",
+    "viewTrend": "View Trend",
+    "topViewed": "Top Viewed",
+    "granularity": "Granularity",
+    "byDay": "Daily",
+    "byWeek": "Weekly",
+    "byMonth": "Monthly",
+    "last7d": "Last 7 Days",
+    "last30d": "Last 30 Days",
+    "last90d": "Last 90 Days"
   },
 
   "show": {
@@ -672,6 +697,26 @@
   "appraisal": {
     "title": "Domain Appraisal",
     "confidence": "Confidence"
+  },
+
+  "notifications": {
+    "title": "Notifications",
+    "markAllRead": "Mark All Read",
+    "generateNotifications": "Generate Notifications",
+    "generating": "Generating...",
+    "generated": "Generated {n} notifications",
+    "noNotifications": "No notifications",
+    "all": "All",
+    "expiryUrgent": "Expiry Urgent",
+    "expiryWarning": "Expiring Soon",
+    "expired": "Expired",
+    "dailySummary": "Daily Summary",
+    "unread": "{n} unread",
+    "settings": "Notification Settings",
+    "expiry7dEnabled": "7-day expiry alert",
+    "expiry30dEnabled": "30-day expiry alert",
+    "dailySummaryEnabled": "Daily asset summary",
+    "settingsSaved": "Settings saved"
   },
 
   "daysRemaining": {

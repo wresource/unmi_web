@@ -11,6 +11,7 @@ const tabs = computed(() => [
   { key: 'domains', label: t('showcase.domainMgmt'), icon: 'material-symbols:domain' },
   { key: 'categories', label: t('showcase.categoryMgmt'), icon: 'material-symbols:category' },
   { key: 'inquiries', label: t('showcase.inquiryMgmt'), icon: 'material-symbols:mail' },
+  { key: 'viewStats', label: t('showcase.viewStats'), icon: 'material-symbols:analytics' },
 ])
 
 // ============ TAB 1: Settings ============
@@ -228,12 +229,70 @@ async function updateInquiryStatus(id: number, status: string) {
   } catch {}
 }
 
+// ============ TAB 5: View Statistics ============
+const viewStatsData = ref<{ date: string; views: number }[]>([])
+const viewStatsTotalViews = ref(0)
+const viewStatsTopDomains = ref<any[]>([])
+const viewStatsLoading = ref(false)
+const viewStatsRange = ref('30')
+const viewStatsGranularity = ref('day')
+
+const VChart = defineAsyncComponent(() =>
+  import('vue-echarts').then(m => m.default || m)
+)
+
+const viewChartOption = computed(() => ({
+  tooltip: { trigger: 'axis' },
+  xAxis: {
+    type: 'category',
+    data: viewStatsData.value.map(d => d.date),
+    axisLabel: { fontSize: 11 },
+  },
+  yAxis: { type: 'value', minInterval: 1 },
+  series: [{
+    type: 'line',
+    data: viewStatsData.value.map(d => d.views),
+    smooth: true,
+    areaStyle: { opacity: 0.15 },
+    itemStyle: { color: '#3B82F6' },
+  }],
+  grid: { left: 50, right: 20, top: 20, bottom: 30 },
+}))
+
+async function loadViewStats() {
+  viewStatsLoading.value = true
+  try {
+    const now = new Date()
+    const days = parseInt(viewStatsRange.value) || 30
+    const startDate = new Date(now.getTime() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
+    const endDate = now.toISOString().split('T')[0]
+
+    const res = await $fetch<any>('/api/showcase/views', {
+      query: {
+        granularity: viewStatsGranularity.value,
+        start_date: startDate,
+        end_date: endDate,
+      },
+    })
+    viewStatsData.value = res?.data || []
+    viewStatsTotalViews.value = res?.total_views || 0
+    viewStatsTopDomains.value = res?.top_domains || []
+  } catch {} finally {
+    viewStatsLoading.value = false
+  }
+}
+
+watch([viewStatsRange, viewStatsGranularity], () => {
+  if (activeTab.value === 'viewStats') loadViewStats()
+})
+
 // Load data on tab change
 watch(activeTab, (tab) => {
   if (tab === 'settings') loadSettings()
   else if (tab === 'domains') loadDomains()
   else if (tab === 'categories') loadCategories()
   else if (tab === 'inquiries') loadInquiries()
+  else if (tab === 'viewStats') loadViewStats()
 }, { immediate: true })
 
 // Watch domain search/page
@@ -695,6 +754,98 @@ watch([inquiriesPage, inquiryStatusFilter], () => {
               >
                 {{ t('common.next') }}
               </button>
+            </div>
+          </div>
+        </div>
+
+        <!-- TAB 5: View Statistics -->
+        <div v-else-if="activeTab === 'viewStats'">
+          <div v-if="viewStatsLoading" class="flex justify-center py-12">
+            <div class="animate-spin h-6 w-6 border-4 border-blue-500 border-t-transparent rounded-full" />
+          </div>
+
+          <div v-else class="space-y-6">
+            <!-- Total Views Card -->
+            <div class="bg-gradient-to-r from-blue-500 to-blue-600 rounded-xl p-6 text-white">
+              <div class="text-sm opacity-80">{{ t('showcase.totalViews') }}</div>
+              <div class="text-3xl font-bold mt-1">{{ viewStatsTotalViews.toLocaleString() }}</div>
+            </div>
+
+            <!-- Controls -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <!-- Date range -->
+              <div class="flex items-center gap-1">
+                <button
+                  v-for="range in [{ value: '7', label: t('showcase.last7d') }, { value: '30', label: t('showcase.last30d') }, { value: '90', label: t('showcase.last90d') }]"
+                  :key="range.value"
+                  :class="[
+                    'px-3 py-1.5 rounded-lg text-sm transition-colors',
+                    viewStatsRange === range.value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                  ]"
+                  @click="viewStatsRange = range.value"
+                >
+                  {{ range.label }}
+                </button>
+              </div>
+
+              <!-- Granularity -->
+              <div class="flex items-center gap-1">
+                <span class="text-sm text-gray-500 mr-1">{{ t('showcase.granularity') }}:</span>
+                <button
+                  v-for="g in [{ value: 'day', label: t('showcase.byDay') }, { value: 'week', label: t('showcase.byWeek') }, { value: 'month', label: t('showcase.byMonth') }]"
+                  :key="g.value"
+                  :class="[
+                    'px-3 py-1.5 rounded-lg text-sm transition-colors',
+                    viewStatsGranularity === g.value
+                      ? 'bg-blue-600 text-white'
+                      : 'bg-gray-100 text-gray-600 hover:bg-gray-200',
+                  ]"
+                  @click="viewStatsGranularity = g.value"
+                >
+                  {{ g.label }}
+                </button>
+              </div>
+            </div>
+
+            <!-- Chart -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ t('showcase.viewTrend') }}</h3>
+              <div v-if="viewStatsData.length > 0" class="h-64">
+                <VChart :option="viewChartOption" autoresize class="w-full h-full" />
+              </div>
+              <div v-else class="text-center py-12 text-gray-400 text-sm">
+                {{ t('common.noData') }}
+              </div>
+            </div>
+
+            <!-- Top Viewed Domains -->
+            <div class="bg-white rounded-xl border border-gray-200 p-4">
+              <h3 class="text-sm font-semibold text-gray-700 mb-3">{{ t('showcase.topViewed') }}</h3>
+              <div v-if="viewStatsTopDomains.length === 0" class="text-center py-8 text-gray-400 text-sm">
+                {{ t('common.noData') }}
+              </div>
+              <table v-else class="w-full text-sm">
+                <thead>
+                  <tr class="border-b border-gray-200">
+                    <th class="py-2 px-2 text-left font-medium text-gray-500">#</th>
+                    <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('domains.domainName') }}</th>
+                    <th class="py-2 px-2 text-right font-medium text-gray-500">{{ t('showcase.totalViews') }}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr
+                    v-for="(domain, idx) in viewStatsTopDomains"
+                    :key="domain.id"
+                    class="border-b border-gray-100"
+                  >
+                    <td class="py-2.5 px-2 text-gray-400">{{ idx + 1 }}</td>
+                    <td class="py-2.5 px-2 font-medium text-gray-900">{{ domain.domain_name }}</td>
+                    <td class="py-2.5 px-2 text-right text-gray-600">{{ domain.total_views.toLocaleString() }}</td>
+                  </tr>
+                </tbody>
+              </table>
             </div>
           </div>
         </div>

@@ -56,6 +56,9 @@ export default defineEventHandler(async (event) => {
       renewal_price: pricing?.suggestedRenewPrice ?? 0,
       purchase_price: pricing?.suggestedPurchasePrice ?? 0,
       currency: pricing?.suggestedCurrency || 'CNY',
+      // Registrant data
+      registrant_name: whois?.registrantOrg || '',
+      registrant_country: whois?.registrantCountry || '',
     },
     whois: whois
       ? {

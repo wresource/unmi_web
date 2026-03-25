@@ -56,6 +56,18 @@ export default defineEventHandler(async (event) => {
       show_description = ?,
       show_category_id = ?,
       is_featured = ?,
+      registrant_name = ?,
+      registrant_org = ?,
+      registrant_email = ?,
+      registrant_phone = ?,
+      registrant_country = ?,
+      registrant_province = ?,
+      registrant_city = ?,
+      registrant_address = ?,
+      admin_name = ?,
+      admin_email = ?,
+      tech_name = ?,
+      tech_email = ?,
       updated_at = ?
     WHERE id = ?
   `)
@@ -80,6 +92,18 @@ export default defineEventHandler(async (event) => {
     body.show_description ?? existing.show_description,
     body.show_category_id ?? existing.show_category_id,
     body.is_featured !== undefined ? (body.is_featured ? 1 : 0) : existing.is_featured,
+    body.registrant_name ?? existing.registrant_name,
+    body.registrant_org ?? existing.registrant_org,
+    body.registrant_email ?? existing.registrant_email,
+    body.registrant_phone ?? existing.registrant_phone,
+    body.registrant_country ?? existing.registrant_country,
+    body.registrant_province ?? existing.registrant_province,
+    body.registrant_city ?? existing.registrant_city,
+    body.registrant_address ?? existing.registrant_address,
+    body.admin_name ?? existing.admin_name,
+    body.admin_email ?? existing.admin_email,
+    body.tech_name ?? existing.tech_name,
+    body.tech_email ?? existing.tech_email,
     now,
     id
   )

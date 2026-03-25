@@ -5,6 +5,23 @@ const authStore = useAuthStore()
 const { t, toggleLocale, isZh } = useI18n()
 
 const mobileMenuOpen = ref(false)
+const notifUnreadCount = ref(0)
+
+async function fetchUnreadCount() {
+  try {
+    const res = await $fetch<any>('/api/notifications', { query: { pageSize: 1 } })
+    notifUnreadCount.value = res?.unread_count || 0
+  } catch {}
+}
+
+onMounted(() => {
+  fetchUnreadCount()
+})
+
+// Refresh unread count on route change
+watch(() => route.path, () => {
+  fetchUnreadCount()
+})
 
 const navItems = computed(() => [
   { label: t('nav.dashboard'), icon: 'material-symbols:dashboard', path: '/' },
@@ -13,6 +30,7 @@ const navItems = computed(() => [
   { label: t('nav.importExport'), icon: 'material-symbols:import-export', path: '/import-export' },
   { label: t('nav.whoisQuery'), icon: 'material-symbols:search', path: '/whois' },
   { label: t('nav.backupSync'), icon: 'material-symbols:backup', path: '/backup-sync' },
+  { label: t('notifications.title'), icon: 'material-symbols:notifications', path: '/notifications' },
   { label: t('nav.showcaseSettings'), icon: 'material-symbols:storefront', path: '/showcase-settings' },
   { label: t('nav.systemSettings'), icon: 'material-symbols:settings', path: '/settings' },
   { label: t('nav.aboutProject'), icon: 'material-symbols:info', path: '/about' },
@@ -172,6 +190,21 @@ onUnmounted(() => {
           <span class="h-2 w-2 rounded-full bg-green-400" />
           <span class="hidden sm:inline">{{ t('header.synced') }}</span>
         </div>
+
+        <!-- Notification bell -->
+        <button
+          class="relative flex items-center justify-center h-9 w-9 rounded-lg text-gray-500 hover:bg-gray-100 hover:text-gray-700 transition-colors"
+          :title="t('notifications.title')"
+          @click="navigateTo('/notifications')"
+        >
+          <Icon name="material-symbols:notifications" class="h-5 w-5" />
+          <span
+            v-if="notifUnreadCount > 0"
+            class="absolute -top-0.5 -right-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold text-white"
+          >
+            {{ notifUnreadCount > 99 ? '99+' : notifUnreadCount }}
+          </span>
+        </button>
 
         <!-- Language toggle -->
         <button

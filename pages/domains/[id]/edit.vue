@@ -30,6 +30,18 @@ const form = reactive({
   privacy_protection: false,
   tag_ids: [] as number[],
   memo: '',
+  registrant_name: '',
+  registrant_org: '',
+  registrant_email: '',
+  registrant_phone: '',
+  registrant_country: '',
+  registrant_province: '',
+  registrant_city: '',
+  registrant_address: '',
+  admin_name: '',
+  admin_email: '',
+  tech_name: '',
+  tech_email: '',
 })
 
 // Validation
@@ -104,6 +116,18 @@ async function fetchData() {
     form.hold_cost = d.hold_cost || 0
     form.dns_servers = d.dns_servers || ''
     form.memo = d.memo || ''
+    form.registrant_name = d.registrant_name || ''
+    form.registrant_org = d.registrant_org || ''
+    form.registrant_email = d.registrant_email || ''
+    form.registrant_phone = d.registrant_phone || ''
+    form.registrant_country = d.registrant_country || ''
+    form.registrant_province = d.registrant_province || ''
+    form.registrant_city = d.registrant_city || ''
+    form.registrant_address = d.registrant_address || ''
+    form.admin_name = d.admin_name || ''
+    form.admin_email = d.admin_email || ''
+    form.tech_name = d.tech_name || ''
+    form.tech_email = d.tech_email || ''
     form.tag_ids = (d.tags || []).map((tg: any) => tg.id)
   } catch (err: any) {
     toast.error(t('domains.form.fetchFailed') + ': ' + (err.data?.statusMessage || err.message))
@@ -145,6 +169,18 @@ async function submit() {
         dns_servers: form.dns_servers,
         tag_ids: form.tag_ids,
         memo: form.memo,
+        registrant_name: form.registrant_name,
+        registrant_org: form.registrant_org,
+        registrant_email: form.registrant_email,
+        registrant_phone: form.registrant_phone,
+        registrant_country: form.registrant_country,
+        registrant_province: form.registrant_province,
+        registrant_city: form.registrant_city,
+        registrant_address: form.registrant_address,
+        admin_name: form.admin_name,
+        admin_email: form.admin_email,
+        tech_name: form.tech_name,
+        tech_email: form.tech_email,
       },
     })
 
@@ -328,6 +364,109 @@ onMounted(() => {
               >
                 <option v-for="c in currencyOptions" :key="c.value" :value="c.value">{{ c.label }}</option>
               </select>
+            </div>
+          </div>
+        </div>
+
+        <!-- Registrant info -->
+        <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 class="text-lg font-semibold text-gray-900 mb-4">{{ t('domains.form.registrantInfo') }}</h2>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantName') }}</label>
+              <input
+                v-model="form.registrant_name"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantOrg') }}</label>
+              <input
+                v-model="form.registrant_org"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantEmail') }}</label>
+              <input
+                v-model="form.registrant_email"
+                type="email"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantPhone') }}</label>
+              <input
+                v-model="form.registrant_phone"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantCountry') }}</label>
+              <input
+                v-model="form.registrant_country"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantProvince') }}</label>
+              <input
+                v-model="form.registrant_province"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantCity') }}</label>
+              <input
+                v-model="form.registrant_city"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.registrantAddress') }}</label>
+              <input
+                v-model="form.registrant_address"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.adminName') }}</label>
+              <input
+                v-model="form.admin_name"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.adminEmail') }}</label>
+              <input
+                v-model="form.admin_email"
+                type="email"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.techName') }}</label>
+              <input
+                v-model="form.tech_name"
+                type="text"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
+            </div>
+            <div>
+              <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('domains.form.techEmail') }}</label>
+              <input
+                v-model="form.tech_email"
+                type="email"
+                class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg input-focus"
+              />
             </div>
           </div>
         </div>
