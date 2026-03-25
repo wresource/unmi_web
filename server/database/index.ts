@@ -211,6 +211,7 @@ function initDatabase(db: Database.Database) {
       source TEXT DEFAULT '',
       registrar TEXT DEFAULT '',
       estimated_value INTEGER DEFAULT 0,
+      auction_price INTEGER DEFAULT 0,
       domain_length INTEGER DEFAULT 0,
       has_numbers INTEGER DEFAULT 0,
       has_hyphens INTEGER DEFAULT 0,
@@ -305,6 +306,12 @@ function initDatabase(db: Database.Database) {
     if (!domainCols.some(c => c.name === col)) {
       db.exec(`ALTER TABLE domains ADD COLUMN ${col} TEXT DEFAULT ''`)
     }
+  }
+
+  // Migration: add auction_price to drop_domains
+  const dropCols = db.prepare("PRAGMA table_info(drop_domains)").all() as { name: string }[]
+  if (dropCols.length > 0 && !dropCols.some(c => c.name === 'auction_price')) {
+    db.exec(`ALTER TABLE drop_domains ADD COLUMN auction_price INTEGER DEFAULT 0`)
   }
 
   // Drop old unique constraint on domain_name if it exists (from original schema)

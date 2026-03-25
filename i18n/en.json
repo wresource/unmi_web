@@ -790,6 +790,7 @@
     "dropDate": "Drop Date",
     "daysUntilDrop": "Days Left",
     "estimatedValue": "Est. Value",
+    "auctionPrice": "Auction Price",
     "status": "Status",
     "addToWatchlist": "Watch",
     "removeFromWatchlist": "Unwatch",

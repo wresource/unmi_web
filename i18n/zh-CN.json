@@ -790,6 +790,7 @@
     "dropDate": "删除日期",
     "daysUntilDrop": "剩余天数",
     "estimatedValue": "估值",
+    "auctionPrice": "拍卖价",
     "status": "状态",
     "addToWatchlist": "关注",
     "removeFromWatchlist": "取消关注",

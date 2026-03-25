@@ -619,11 +619,41 @@ export async function fetchRealDropDomains(options?: {
  * Import drop domains into the database (upsert).
  * Only imports pure-letter domains with length 1-5.
  */
+/**
+ * Calculate a realistic auction/catch price based on domain properties.
+ * This estimates what the domain would typically go for at auction.
+ */
+function calculateAuctionPrice(domainName: string, tld: string, estimatedValue: number): number {
+  const sld = domainName.split('.')[0]
+  const len = sld.length
+
+  // Base: auction prices are typically 10-30% of estimated value
+  let price = Math.round(estimatedValue * 0.15)
+
+  // Adjust by TLD
+  if (tld === '.com') {
+    // .com auction prices are higher
+    if (len <= 2) price = Math.max(price, 5000)
+    else if (len === 3) price = Math.max(price, 500)
+    else if (len === 4) price = Math.max(price, 100)
+    else price = Math.max(price, 30)
+  } else if (tld === '.net' || tld === '.org') {
+    if (len <= 3) price = Math.max(price, 200)
+    else price = Math.max(price, 20)
+  }
+
+  // Round to nice numbers
+  if (price >= 1000) price = Math.round(price / 100) * 100
+  else if (price >= 100) price = Math.round(price / 10) * 10
+
+  return price
+}
+
 export function importDropDomains(domains: any[]): number {
   const db = useDatabase()
   const stmt = db.prepare(`
-    INSERT OR REPLACE INTO drop_domains (domain_name, tld, drop_date, status, source, estimated_value, domain_length, has_numbers, has_hyphens, is_pure_letters, is_pure_numbers)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT OR REPLACE INTO drop_domains (domain_name, tld, drop_date, status, source, estimated_value, auction_price, domain_length, has_numbers, has_hyphens, is_pure_letters, is_pure_numbers)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `)
 
   let count = 0
@@ -636,10 +666,13 @@ export function importDropDomains(domains: any[]): number {
       // Skip domains longer than 5 characters
       if (analysis.length > 5) continue
 
+      const estValue = d.estimated_value || 0
+      const auctionPrice = d.auction_price || calculateAuctionPrice(d.domain_name, d.tld || analysis.tld, estValue)
+
       stmt.run(
         d.domain_name, d.tld || analysis.tld, d.drop_date || '',
         d.status || 'pending_delete', d.source || 'rdap',
-        d.estimated_value || 0, analysis.length,
+        estValue, auctionPrice, analysis.length,
         analysis.hasNumbers ? 1 : 0, analysis.hasHyphens ? 1 : 0,
         analysis.isPureLetters ? 1 : 0, analysis.isPureNumbers ? 1 : 0
       )

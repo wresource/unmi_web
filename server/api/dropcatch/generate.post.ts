@@ -38,9 +38,27 @@ export default defineEventHandler(async (event) => {
       for (const d of unvalued) {
         try {
           const appraisal = appraiseDomain(d.domain_name)
+          const parts = d.domain_name.split('.')
+          const tld = '.' + parts.slice(1).join('.')
+          const sld = parts[0]
+          const len = sld.length
+          // Auction price: ~15% of estimated value with minimums by length/tld
+          let auctionPrice = Math.round(appraisal.estimatedValue * 0.15)
+          if (tld === '.com') {
+            if (len <= 2) auctionPrice = Math.max(auctionPrice, 5000)
+            else if (len === 3) auctionPrice = Math.max(auctionPrice, 500)
+            else if (len === 4) auctionPrice = Math.max(auctionPrice, 100)
+            else auctionPrice = Math.max(auctionPrice, 30)
+          } else {
+            if (len <= 3) auctionPrice = Math.max(auctionPrice, 200)
+            else auctionPrice = Math.max(auctionPrice, 20)
+          }
+          if (auctionPrice >= 1000) auctionPrice = Math.round(auctionPrice / 100) * 100
+          else if (auctionPrice >= 100) auctionPrice = Math.round(auctionPrice / 10) * 10
+
           db.prepare(
-            'UPDATE drop_domains SET estimated_value = ? WHERE id = ?'
-          ).run(appraisal.estimatedValue, d.id)
+            'UPDATE drop_domains SET estimated_value = ?, auction_price = ? WHERE id = ?'
+          ).run(appraisal.estimatedValue, auctionPrice, d.id)
           appraised++
         } catch {
           // Skip domains that fail appraisal
