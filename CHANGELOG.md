@@ -1,5 +1,29 @@
 # Changelog
 
+## v1.2.0 (2026-03-25)
+
+### 修复与改进
+
+#### WHOIS 注册人信息扩展
+- WhoisResult 接口新增 11 个字段：registrantName/Email/Phone/Address/City/Province、adminName/Email、techName/Email、privacyProtection
+- RDAP 解析器：从 vCard 数据中提取注册人/管理/技术联系人信息
+- WHOIS 文本解析器：新增 30+ 字段名模式匹配（支持各种命名格式）
+- 隐私保护检测：自动识别 WhoisGuard、Domains By Proxy、GDPR Redacted 等代理服务
+- 自动识别时所有注册人字段回填到域名表单
+
+#### 数据库稳定性
+- 新增 `busy_timeout = 5000ms`，解决并发写入时 SQLITE_BUSY 导致数据丢失
+- 新增 `synchronous = NORMAL`，平衡性能与数据安全
+
+#### 管理后台入口
+- 展示页"管理"按钮改为 `target="_blank"` 新窗口打开，不再干扰当前页面
+- 移动端展示页菜单中也增加了管理入口
+
+#### MIT License
+- 修复 about 页面 License 内容为空的问题
+
+---
+
 ## v1.1.0 (2026-03-25)
 
 ### 新增功能

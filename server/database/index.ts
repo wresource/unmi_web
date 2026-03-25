@@ -14,6 +14,8 @@ export function useDatabase(): Database.Database {
   _db = new Database(dbPath)
   _db.pragma('journal_mode = WAL')
   _db.pragma('foreign_keys = ON')
+  _db.pragma('busy_timeout = 5000')
+  _db.pragma('synchronous = NORMAL')
 
   initDatabase(_db)
   return _db

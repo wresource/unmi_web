@@ -68,14 +68,16 @@ watch(() => route.path, () => {
             <button @click="toggleLocale" class="px-2 py-1.5 rounded-lg text-xs font-medium text-gray-500 hover:text-gray-700 hover:bg-gray-100 transition-colors">
               {{ isZh ? 'EN' : '中文' }}
             </button>
-            <NuxtLink
-              to="/unlock"
+            <a
+              href="/unlock"
+              target="_blank"
+              rel="noopener"
               class="hidden sm:inline-flex items-center gap-1.5 px-3 py-2 rounded-lg text-gray-400 hover:text-gray-600 hover:bg-gray-100 text-xs font-medium transition-colors"
               :title="t('show.admin')"
             >
               <Icon name="material-symbols:admin-panel-settings-outline" class="h-4 w-4" />
               {{ t('show.admin') }}
-            </NuxtLink>
+            </a>
             <!-- Mobile menu button -->
             <button
               class="md:hidden flex items-center justify-center h-9 w-9 rounded-lg text-gray-500 hover:bg-gray-100 transition-colors"
@@ -112,6 +114,15 @@ watch(() => route.path, () => {
             >
               {{ t('show.contactUs') }}
             </NuxtLink>
+            <a
+              href="/unlock"
+              target="_blank"
+              rel="noopener"
+              class="block px-4 py-2.5 rounded-lg text-sm font-medium text-gray-400 hover:bg-gray-50 transition-colors"
+              @click="mobileMenuOpen = false"
+            >
+              {{ t('show.admin') }}
+            </a>
           </nav>
         </div>
       </Transition>

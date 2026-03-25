@@ -16,6 +16,17 @@ export interface WhoisResult {
   dnssec: string
   registrantOrg: string
   registrantCountry: string
+  registrantName: string
+  registrantEmail: string
+  registrantPhone: string
+  registrantAddress: string
+  registrantCity: string
+  registrantProvince: string
+  adminName: string
+  adminEmail: string
+  techName: string
+  techEmail: string
+  privacyProtection: boolean
   whoisServer: string
   rawText: string
   source: 'rdap' | 'whois'
@@ -284,6 +295,17 @@ function parseRdapResponse(data: any, domain: string, rdapServer: string): Whois
     dnssec: '',
     registrantOrg: '',
     registrantCountry: '',
+    registrantName: '',
+    registrantEmail: '',
+    registrantPhone: '',
+    registrantAddress: '',
+    registrantCity: '',
+    registrantProvince: '',
+    adminName: '',
+    adminEmail: '',
+    techName: '',
+    techEmail: '',
+    privacyProtection: false,
     whoisServer: rdapServer,
     rawText: JSON.stringify(data, null, 2),
     source: 'rdap',
@@ -320,7 +342,24 @@ function parseRdapResponse(data: any, domain: string, rdapServer: string): Whois
       if (roles.includes('registrant')) {
         result.registrantOrg = extractVcardField(entity.vcardArray, 'org')
           || extractVcardField(entity.vcardArray, 'fn')
+        result.registrantName = extractVcardField(entity.vcardArray, 'fn')
+        result.registrantEmail = extractVcardField(entity.vcardArray, 'email')
+        result.registrantPhone = extractVcardTel(entity.vcardArray)
         result.registrantCountry = extractVcardCountry(entity.vcardArray)
+        const adrParts = extractVcardAdrParts(entity.vcardArray)
+        result.registrantAddress = adrParts.street
+        result.registrantCity = adrParts.city
+        result.registrantProvince = adrParts.province
+      }
+
+      if (roles.includes('administrative') || roles.includes('admin')) {
+        result.adminName = extractVcardField(entity.vcardArray, 'fn')
+        result.adminEmail = extractVcardField(entity.vcardArray, 'email')
+      }
+
+      if (roles.includes('technical') || roles.includes('tech')) {
+        result.techName = extractVcardField(entity.vcardArray, 'fn')
+        result.techEmail = extractVcardField(entity.vcardArray, 'email')
       }
     }
   }
@@ -346,6 +385,9 @@ function parseRdapResponse(data: any, domain: string, rdapServer: string): Whois
   if (data.port43) {
     result.whoisServer = data.port43
   }
+
+  // Privacy protection detection
+  result.privacyProtection = detectPrivacyProtection(result.registrantName, result.registrantOrg)
 
   return result
 }
@@ -375,6 +417,55 @@ function extractVcardCountry(vcardArray: any): string {
     }
   }
   return ''
+}
+
+function extractVcardTel(vcardArray: any): string {
+  if (!Array.isArray(vcardArray) || vcardArray.length < 2) return ''
+  const entries = vcardArray[1]
+  if (!Array.isArray(entries)) return ''
+  for (const entry of entries) {
+    if (Array.isArray(entry) && entry[0] === 'tel') {
+      const val = String(entry[3] || '')
+      return val.replace(/^tel:/i, '')
+    }
+  }
+  return ''
+}
+
+function extractVcardAdrParts(vcardArray: any): { street: string; city: string; province: string } {
+  const empty = { street: '', city: '', province: '' }
+  if (!Array.isArray(vcardArray) || vcardArray.length < 2) return empty
+  const entries = vcardArray[1]
+  if (!Array.isArray(entries)) return empty
+  for (const entry of entries) {
+    if (Array.isArray(entry) && entry[0] === 'adr') {
+      const adr = entry[3]
+      if (Array.isArray(adr) && adr.length >= 5) {
+        return {
+          street: String(adr[2] || ''),
+          city: String(adr[3] || ''),
+          province: String(adr[4] || ''),
+        }
+      }
+      // Fall back to label if structured parts are empty
+      const label = entry[1]?.label || ''
+      if (label) {
+        return { street: label, city: '', province: '' }
+      }
+    }
+  }
+  return empty
+}
+
+const PRIVACY_KEYWORDS = [
+  'privacy', 'protected', 'proxy', 'redacted', 'gdpr',
+  'whoisguard', 'domains by proxy', 'contact privacy',
+  'identity protect', 'withheld', 'data protected',
+]
+
+function detectPrivacyProtection(name: string, org: string): boolean {
+  const combined = `${name} ${org}`.toLowerCase()
+  return PRIVACY_KEYWORDS.some(keyword => combined.includes(keyword))
 }
 
 // ============================================================================
@@ -507,7 +598,7 @@ async function queryWhois(domain: string, tld: string): Promise<WhoisResult> {
 
   const parsed = parseWhoisText(fullText, domain, tld)
 
-  return {
+  const whoisResult: WhoisResult = {
     domain,
     registered: true,
     registrar: parsed.registrar || '',
@@ -519,11 +610,27 @@ async function queryWhois(domain: string, tld: string): Promise<WhoisResult> {
     dnssec: parsed.dnssec || '',
     registrantOrg: parsed.registrantOrg || '',
     registrantCountry: parsed.registrantCountry || '',
+    registrantName: parsed.registrantName || '',
+    registrantEmail: parsed.registrantEmail || '',
+    registrantPhone: parsed.registrantPhone || '',
+    registrantAddress: parsed.registrantAddress || '',
+    registrantCity: parsed.registrantCity || '',
+    registrantProvince: parsed.registrantProvince || '',
+    adminName: parsed.adminName || '',
+    adminEmail: parsed.adminEmail || '',
+    techName: parsed.techName || '',
+    techEmail: parsed.techEmail || '',
+    privacyProtection: false,
     whoisServer: server,
     rawText: fullText,
     source: 'whois',
     queriedAt: new Date().toISOString(),
   }
+
+  // Privacy protection detection
+  whoisResult.privacyProtection = detectPrivacyProtection(whoisResult.registrantName, whoisResult.registrantOrg)
+
+  return whoisResult
 }
 
 // ============================================================================
@@ -653,17 +760,90 @@ function parseWhoisGeneric(text: string): Partial<WhoisResult> {
 
     // Registrant Organization
     else if (matchesKey(key, [
-      'registrant organization', 'registrant org', 'registrant name',
+      'registrant organization', 'registrant organisation', 'registrant org',
     ])) {
       if (!result.registrantOrg) result.registrantOrg = value
     }
 
+    // Registrant Name
+    else if (matchesKey(key, [
+      'registrant name', 'registrant', 'registrant contact name',
+    ])) {
+      if (!result.registrantName) result.registrantName = value
+      // Also use as org fallback
+      if (!result.registrantOrg) result.registrantOrg = value
+    }
+
+    // Registrant Email
+    else if (matchesKey(key, [
+      'registrant email', 'registrant contact email', 'registrant e mail',
+    ])) {
+      if (!result.registrantEmail) result.registrantEmail = value
+    }
+
+    // Registrant Phone
+    else if (matchesKey(key, [
+      'registrant phone', 'registrant phone number', 'registrant contact phone',
+    ])) {
+      if (!result.registrantPhone) result.registrantPhone = value
+    }
+
     // Registrant Country
     else if (matchesKey(key, [
-      'registrant country', 'registrant country/economy',
+      'registrant country', 'registrant country code', 'registrant country/economy',
       'registrant contact country',
     ])) {
       if (!result.registrantCountry) result.registrantCountry = value
+    }
+
+    // Registrant Street/Address
+    else if (matchesKey(key, [
+      'registrant street', 'registrant address', 'registrant contact address',
+    ])) {
+      if (!result.registrantAddress) result.registrantAddress = value
+    }
+
+    // Registrant City
+    else if (matchesKey(key, [
+      'registrant city', 'registrant contact city',
+    ])) {
+      if (!result.registrantCity) result.registrantCity = value
+    }
+
+    // Registrant State/Province
+    else if (matchesKey(key, [
+      'registrant state/province', 'registrant province', 'registrant state',
+      'registrant contact state/province',
+    ])) {
+      if (!result.registrantProvince) result.registrantProvince = value
+    }
+
+    // Admin Name
+    else if (matchesKey(key, [
+      'admin name', 'administrative name', 'admin contact name',
+    ])) {
+      if (!result.adminName) result.adminName = value
+    }
+
+    // Admin Email
+    else if (matchesKey(key, [
+      'admin email', 'administrative email', 'admin contact email',
+    ])) {
+      if (!result.adminEmail) result.adminEmail = value
+    }
+
+    // Tech Name
+    else if (matchesKey(key, [
+      'tech name', 'technical name', 'tech contact name',
+    ])) {
+      if (!result.techName) result.techName = value
+    }
+
+    // Tech Email
+    else if (matchesKey(key, [
+      'tech email', 'technical email', 'tech contact email',
+    ])) {
+      if (!result.techEmail) result.techEmail = value
     }
   }
 
@@ -980,6 +1160,17 @@ function makeEmptyResult(
     dnssec: '',
     registrantOrg: '',
     registrantCountry: '',
+    registrantName: '',
+    registrantEmail: '',
+    registrantPhone: '',
+    registrantAddress: '',
+    registrantCity: '',
+    registrantProvince: '',
+    adminName: '',
+    adminEmail: '',
+    techName: '',
+    techEmail: '',
+    privacyProtection: false,
     whoisServer: server,
     rawText,
     source,
