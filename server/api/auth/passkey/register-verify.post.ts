@@ -26,8 +26,13 @@ export default defineEventHandler(async (event) => {
 
     const { credential } = verification.registrationInfo
 
-    const credentialIdBase64url = Buffer.from(credential.id).toString('base64url')
-    const publicKeyBase64url = Buffer.from(credential.publicKey).toString('base64url')
+    // @simplewebauthn/server v13: credential.id is base64url string, publicKey is Uint8Array
+    const credentialIdBase64url = typeof credential.id === 'string'
+      ? credential.id
+      : Buffer.from(credential.id).toString('base64url')
+    const publicKeyBase64url = typeof credential.publicKey === 'string'
+      ? credential.publicKey
+      : Buffer.from(credential.publicKey).toString('base64url')
 
     db.prepare(`
       INSERT INTO passkey_credentials (account_id, credential_id, public_key, counter, device_name, transports)
