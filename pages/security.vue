@@ -155,10 +155,10 @@ async function fetchDevices() {
 async function addCurrentDevice() {
   try {
     addDeviceLoading.value = true
-    const { getDeviceFingerprint } = useDeviceAuth()
+    const { getDeviceId, getDeviceName, getFingerprint } = useDeviceAuth()
     await $fetch('/api/auth/device/register', {
       method: 'POST',
-      body: { fingerprint: getDeviceFingerprint(), name: navigator.userAgent.substring(0, 50) },
+      body: { deviceId: getDeviceId(), deviceName: getDeviceName(), deviceFingerprint: getFingerprint() },
     })
     toast.success(t('security.device.added'))
     await fetchDevices()

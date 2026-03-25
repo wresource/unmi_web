@@ -3,7 +3,7 @@ definePageMeta({ layout: 'auth' })
 
 const authStore = useAuthStore()
 const { t } = useI18n()
-const { getStoredDeviceId } = useDeviceAuth()
+const { getDeviceId, getDeviceName, getFingerprint } = useDeviceAuth()
 
 const mode = ref<'login' | 'create'>('login')
 const password = ref('')
@@ -60,12 +60,13 @@ async function handleLogin() {
   }
   try {
     savedPassword.value = password.value
-    const deviceId = getStoredDeviceId() || undefined
+    const deviceId = getDeviceId()
     const result = await authStore.unlock(password.value, undefined, undefined, deviceId)
     if (result?.requiresTOTP) {
-      // TOTP step will be shown via pendingTOTP
       return
     }
+    // Auto-register device on successful login
+    autoRegisterDevice()
     navigateTo('/dashboard')
   } catch (e: any) {
     error.value = e.message || t('auth.errors.loginFailed')
@@ -81,12 +82,13 @@ async function handleTOTPSubmit() {
   }
   try {
     totpLoading.value = true
-    const deviceId = getStoredDeviceId() || undefined
+    const deviceId = getDeviceId()
     if (useBackup.value) {
       await authStore.unlock(savedPassword.value, undefined, code, deviceId)
     } else {
       await authStore.unlock(savedPassword.value, code, undefined, deviceId)
     }
+    autoRegisterDevice()
     navigateTo('/dashboard')
   } catch (e: any) {
     totpError.value = e.message || (useBackup.value ? t('auth.backupCodeInvalid') : t('auth.totpInvalid'))
@@ -133,9 +135,29 @@ async function handleCreate() {
   }
   try {
     await authStore.createAccount(password.value, confirmPassword.value, accountName.value || undefined)
+    // Auto-register first device on account creation
+    autoRegisterDevice()
     navigateTo('/dashboard')
   } catch (e: any) {
     error.value = e.message || t('auth.errors.createFailed')
+  }
+}
+
+/**
+ * Silently register the current device after successful login/registration.
+ * Fails gracefully — device auth is optional.
+ */
+async function autoRegisterDevice() {
+  try {
+    const deviceId = getDeviceId()
+    const deviceName = getDeviceName()
+    const fingerprint = getFingerprint()
+    await $fetch('/api/auth/device/register', {
+      method: 'POST',
+      body: { deviceId, deviceName, deviceFingerprint: fingerprint },
+    })
+  } catch {
+    // Silent fail — device registration is a nice-to-have
   }
 }
 
