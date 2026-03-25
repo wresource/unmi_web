@@ -26,6 +26,10 @@ const backupCodesData = ref<string[] | null>(null)
 const devices = ref<any[]>([])
 const devicesLoading = ref(false)
 const addDeviceLoading = ref(false)
+const showAddDeviceModal = ref(false)
+const newDeviceName = ref('')
+const editingDeviceId = ref<number | null>(null)
+const editDeviceName = ref('')
 
 // Passkeys
 const passkeys = ref<any[]>([])
@@ -35,8 +39,13 @@ const passkeyName = ref('')
 const passkeyRegistering = ref(false)
 const webAuthnSupported = ref(false)
 
-onMounted(() => {
+const currentDeviceId = ref('')
+
+onMounted(async () => {
   webAuthnSupported.value = !!(window.PublicKeyCredential)
+  // Get current device ID for highlighting
+  const { getDeviceId } = useDeviceAuth()
+  currentDeviceId.value = getDeviceId()
   fetchMethods()
   fetchDevices()
   fetchPasskeys()
@@ -152,10 +161,16 @@ async function fetchDevices() {
   }
 }
 
+function openAddDeviceModal() {
+  const { getDeviceName } = useDeviceAuth()
+  newDeviceName.value = getDeviceName()
+  showAddDeviceModal.value = true
+}
+
 async function addCurrentDevice() {
   try {
     addDeviceLoading.value = true
-    const { getOrCreateDevice, getDeviceName } = useDeviceAuth()
+    const { getOrCreateDevice } = useDeviceAuth()
     const device = await getOrCreateDevice()
     if (!device) {
       toast.error('Device crypto not supported')
@@ -165,10 +180,12 @@ async function addCurrentDevice() {
       method: 'POST',
       body: {
         publicKeyJwk: device.publicKeyJwk,
-        deviceName: getDeviceName(),
+        deviceName: newDeviceName.value.trim() || 'Device',
       },
     })
     toast.success(t('security.device.added'))
+    showAddDeviceModal.value = false
+    newDeviceName.value = ''
     await fetchDevices()
     await fetchMethods()
   } catch (e: any) {
@@ -176,6 +193,38 @@ async function addCurrentDevice() {
   } finally {
     addDeviceLoading.value = false
   }
+}
+
+function startRenameDevice(device: any) {
+  editingDeviceId.value = device.id
+  editDeviceName.value = device.device_name || ''
+}
+
+async function saveDeviceName(id: number) {
+  try {
+    await $fetch(`/api/auth/device/${id}`, {
+      method: 'PUT',
+      body: { deviceName: editDeviceName.value.trim() },
+    })
+    editingDeviceId.value = null
+    await fetchDevices()
+    toast.success(t('common.saved'))
+  } catch (e: any) {
+    toast.error(e?.data?.statusMessage || t('common.failed'))
+  }
+}
+
+function getDeviceIcon(ua: string): string {
+  if (!ua) return 'material-symbols:devices'
+  const lower = ua.toLowerCase()
+  if (lower.includes('iphone')) return 'material-symbols:smartphone'
+  if (lower.includes('ipad')) return 'material-symbols:tablet-mac'
+  if (lower.includes('android') && lower.includes('mobile')) return 'material-symbols:smartphone'
+  if (lower.includes('android')) return 'material-symbols:tablet-android'
+  if (lower.includes('macintosh') || lower.includes('mac os')) return 'material-symbols:laptop-mac'
+  if (lower.includes('windows')) return 'material-symbols:laptop-windows'
+  if (lower.includes('linux')) return 'material-symbols:computer'
+  return 'material-symbols:devices'
 }
 
 async function removeDevice(id: number) {
@@ -348,32 +397,56 @@ function formatDate(d: string | null) {
           <div
             v-for="device in devices"
             :key="device.id"
-            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100"
+            class="p-4 rounded-lg bg-gray-50 border border-gray-100"
           >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-gray-200 shrink-0">
-                <Icon name="material-symbols:smartphone" class="w-4 h-4 text-gray-600" />
-              </div>
-              <div class="min-w-0">
-                <div class="flex items-center gap-2">
-                  <span class="text-sm font-medium text-gray-800 truncate">{{ device.name || 'Device' }}</span>
-                  <span v-if="device.isCurrent" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200">
-                    <span class="w-1.5 h-1.5 rounded-full bg-green-500" />
-                    {{ t('security.device.current') }}
-                  </span>
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3 min-w-0">
+                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-white border border-gray-200 shrink-0 mt-0.5">
+                  <Icon :name="getDeviceIcon(device.user_agent || '')" class="w-5 h-5 text-gray-600" />
                 </div>
-                <p class="text-xs text-gray-400 truncate">{{ truncateUA(device.userAgent || '') }}</p>
-                <p class="text-xs text-gray-400">
-                  {{ t('security.device.lastUsed') }}: {{ formatDate(device.lastUsed || device.last_used) }}
-                </p>
+                <div class="min-w-0 flex-1">
+                  <!-- Name: editable or display -->
+                  <div v-if="editingDeviceId === device.id" class="flex items-center gap-2 mb-1">
+                    <input
+                      v-model="editDeviceName"
+                      type="text"
+                      class="h-7 px-2 text-sm border border-blue-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48"
+                      @keydown.enter="saveDeviceName(device.id)"
+                      @keydown.escape="editingDeviceId = null"
+                    />
+                    <button class="text-xs text-blue-600 hover:text-blue-800" @click="saveDeviceName(device.id)">{{ t('common.save') }}</button>
+                    <button class="text-xs text-gray-400 hover:text-gray-600" @click="editingDeviceId = null">{{ t('common.cancel') }}</button>
+                  </div>
+                  <div v-else class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-semibold text-gray-900">{{ device.device_name || 'Unknown Device' }}</span>
+                    <button
+                      class="text-gray-300 hover:text-blue-500 transition-colors"
+                      :title="t('common.edit')"
+                      @click="startRenameDevice(device)"
+                    >
+                      <Icon name="material-symbols:edit" class="w-3.5 h-3.5" />
+                    </button>
+                    <span v-if="device.device_id === currentDeviceId" class="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs font-medium bg-green-50 text-green-700 border border-green-200">
+                      <span class="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                      {{ t('security.device.current') }}
+                    </span>
+                  </div>
+                  <!-- Device ID (truncated) -->
+                  <p class="text-xs text-gray-400 font-mono mb-1">ID: {{ (device.device_id || '').substring(0, 12) }}...</p>
+                  <!-- Times -->
+                  <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400">
+                    <span v-if="device.last_used_at">{{ t('security.device.lastUsed') }}: {{ formatDate(device.last_used_at) }}</span>
+                    <span v-if="device.created_at">{{ t('security.device.registered') }}: {{ formatDate(device.created_at) }}</span>
+                  </div>
+                </div>
               </div>
+              <button
+                class="shrink-0 text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50"
+                @click="removeDevice(device.id)"
+              >
+                {{ t('security.device.remove') }}
+              </button>
             </div>
-            <button
-              class="shrink-0 text-xs text-red-500 hover:text-red-700 transition-colors px-2 py-1"
-              @click="removeDevice(device.id)"
-            >
-              {{ t('security.device.remove') }}
-            </button>
           </div>
         </div>
 
@@ -381,7 +454,7 @@ function formatDate(d: string | null) {
           <button
             :disabled="addDeviceLoading || (methods?.deviceCount >= 10)"
             class="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 transition-colors disabled:opacity-60"
-            @click="addCurrentDevice"
+            @click="openAddDeviceModal"
           >
             <Icon v-if="addDeviceLoading" name="material-symbols:progress-activity" class="w-4 h-4 animate-spin" />
             <Icon v-else name="material-symbols:add" class="w-4 h-4" />
@@ -499,6 +572,45 @@ function formatDate(d: string | null) {
         </div>
       </div>
     </div>
+
+    <!-- Add Device Modal -->
+    <Teleport to="body">
+      <Transition name="fade">
+        <div v-if="showAddDeviceModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="showAddDeviceModal = false">
+          <div class="absolute inset-0 bg-black/50" />
+          <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{{ t('security.device.addCurrent') }}</h3>
+            <div class="space-y-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">{{ t('security.device.nameLabel') }}</label>
+                <input
+                  v-model="newDeviceName"
+                  type="text"
+                  :placeholder="t('security.device.namePlaceholder')"
+                  class="w-full h-10 px-3 rounded-lg border border-gray-200 text-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500"
+                />
+                <p class="text-xs text-gray-400 mt-1">{{ t('security.device.nameHint') }}</p>
+              </div>
+              <div class="flex justify-end gap-2">
+                <button
+                  class="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                  @click="showAddDeviceModal = false"
+                >
+                  {{ t('common.cancel') }}
+                </button>
+                <button
+                  :disabled="addDeviceLoading"
+                  class="px-4 py-2 text-sm font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors disabled:opacity-60"
+                  @click="addCurrentDevice"
+                >
+                  {{ addDeviceLoading ? t('common.saving') : t('security.device.addCurrent') }}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
 
     <!-- TOTP Setup Modal -->
     <Teleport to="body">

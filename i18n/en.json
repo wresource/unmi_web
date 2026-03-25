@@ -900,7 +900,11 @@
       "maxReached": "Maximum device limit reached (10)",
       "added": "Device authorized",
       "removed": "Device removed",
-      "noDevices": "No authorized devices"
+      "noDevices": "No authorized devices",
+      "registered": "Registered",
+      "nameLabel": "Device Name",
+      "namePlaceholder": "e.g. iPhone 16 Pro Max, MacBook Pro 16\"",
+      "nameHint": "Name your device for easy identification, or leave blank for auto-detect"
     },
 
     "passkey": {

@@ -900,7 +900,11 @@
       "maxReached": "已达到最大设备数量 (10)",
       "added": "设备已授权",
       "removed": "设备已移除",
-      "noDevices": "暂无授权设备"
+      "noDevices": "暂无授权设备",
+      "registered": "授权时间",
+      "nameLabel": "设备名称",
+      "namePlaceholder": "例: iPhone 16 Pro Max, MacBook Pro 16\"",
+      "nameHint": "给设备起个名字方便识别，留空则自动检测"
     },
 
     "passkey": {
