@@ -23,21 +23,41 @@ watch(() => route.path, () => {
   fetchUnreadCount()
 })
 
-const navItems = computed(() => [
-  { label: t('nav.dashboard'), icon: 'material-symbols:dashboard', path: '/dashboard' },
-  { label: t('nav.domainList'), icon: 'material-symbols:domain', path: '/domains' },
-  { label: t('nav.statistics'), icon: 'material-symbols:analytics', path: '/statistics' },
-  { label: t('nav.importExport'), icon: 'material-symbols:import-export', path: '/import-export' },
-  { label: t('nav.whoisQuery'), icon: 'material-symbols:search', path: '/whois' },
-  { label: t('nav.dropcatch'), icon: 'material-symbols:timer-outline', path: '/dropcatch' },
-  { label: t('nav.backupSync'), icon: 'material-symbols:backup', path: '/backup-sync' },
-  { label: t('notifications.title'), icon: 'material-symbols:notifications', path: '/notifications' },
-  { label: t('nav.emailSettings'), icon: 'material-symbols:mail', path: '/email-settings' },
-  { label: t('nav.showcaseSettings'), icon: 'material-symbols:storefront', path: '/showcase-settings' },
-  { label: t('nav.systemSettings'), icon: 'material-symbols:settings', path: '/settings' },
-  { label: t('nav.security'), icon: 'material-symbols:security', path: '/security' },
-  { label: t('nav.aboutProject'), icon: 'material-symbols:info', path: '/about' },
+// Navigation grouped by function
+const navGroups = computed(() => [
+  {
+    items: [
+      { label: t('nav.dashboard'), icon: 'material-symbols:dashboard', path: '/dashboard' },
+      { label: t('nav.domainList'), icon: 'material-symbols:domain', path: '/domains' },
+      { label: t('nav.dropcatch'), icon: 'material-symbols:timer-outline', path: '/dropcatch' },
+    ],
+  },
+  {
+    items: [
+      { label: t('nav.statistics'), icon: 'material-symbols:analytics', path: '/statistics' },
+      { label: t('nav.whoisQuery'), icon: 'material-symbols:search', path: '/whois' },
+      { label: t('nav.importExport'), icon: 'material-symbols:import-export', path: '/import-export' },
+    ],
+  },
+  {
+    items: [
+      { label: t('notifications.title'), icon: 'material-symbols:notifications', path: '/notifications' },
+      { label: t('nav.emailSettings'), icon: 'material-symbols:mail', path: '/email-settings' },
+      { label: t('nav.showcaseSettings'), icon: 'material-symbols:storefront', path: '/showcase-settings' },
+    ],
+  },
+  {
+    items: [
+      { label: t('nav.security'), icon: 'material-symbols:security', path: '/security' },
+      { label: t('nav.systemSettings'), icon: 'material-symbols:settings', path: '/settings' },
+      { label: t('nav.backupSync'), icon: 'material-symbols:backup', path: '/backup-sync' },
+      { label: t('nav.aboutProject'), icon: 'material-symbols:info', path: '/about' },
+    ],
+  },
 ])
+
+// Flat list for mobile menu
+const navItems = computed(() => navGroups.value.flatMap(g => g.items))
 
 function isActive(path: string) {
   if (path === '/dashboard') return route.path === '/dashboard'
@@ -104,29 +124,34 @@ onUnmounted(() => {
         </Transition>
       </div>
 
-      <!-- Navigation -->
-      <nav class="flex-1 overflow-y-auto py-4 px-3 space-y-1">
-        <button
-          v-for="item in navItems"
-          :key="item.path"
-          :class="[
-            'group flex w-full items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-all duration-150',
-            isActive(item.path)
-              ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
-              : 'text-gray-300 hover:bg-gray-800 hover:text-white',
-          ]"
-          :title="appStore.sidebarCollapsed ? item.label : undefined"
-          @click="handleNavClick(item)"
-        >
-          <Icon
-            :name="item.icon"
-            class="h-5 w-5 shrink-0 transition-colors duration-150"
-            :class="isActive(item.path) ? 'text-white' : 'text-gray-400 group-hover:text-white'"
-          />
-          <Transition name="fade">
-            <span v-if="!appStore.sidebarCollapsed" class="whitespace-nowrap">{{ item.label }}</span>
-          </Transition>
-        </button>
+      <!-- Navigation (grouped) -->
+      <nav class="flex-1 overflow-y-auto py-3 px-3">
+        <template v-for="(group, gi) in navGroups" :key="gi">
+          <div v-if="gi > 0" class="my-2 mx-2 border-t border-gray-700/40" />
+          <div class="space-y-0.5">
+            <button
+              v-for="item in group.items"
+              :key="item.path"
+              :class="[
+                'group flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150',
+                isActive(item.path)
+                  ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/30'
+                  : 'text-gray-300 hover:bg-gray-800 hover:text-white',
+              ]"
+              :title="appStore.sidebarCollapsed ? item.label : undefined"
+              @click="handleNavClick(item)"
+            >
+              <Icon
+                :name="item.icon"
+                class="h-5 w-5 shrink-0 transition-colors duration-150"
+                :class="isActive(item.path) ? 'text-white' : 'text-gray-400 group-hover:text-white'"
+              />
+              <Transition name="fade">
+                <span v-if="!appStore.sidebarCollapsed" class="whitespace-nowrap">{{ item.label }}</span>
+              </Transition>
+            </button>
+          </div>
+        </template>
       </nav>
 
       <!-- Go to showcase button -->
