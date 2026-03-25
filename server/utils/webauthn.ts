@@ -52,9 +52,7 @@ export async function createRegistrationOptions(
     rpID: config.rpID,
     userName: accountName || `user-${accountId}`,
     attestationType: 'none',
-    excludeCredentials: existingCredentialIds.map(id => ({
-      id: Buffer.from(id, 'base64url'),
-    })),
+    excludeCredentials: existingCredentialIds.map(id => ({ id })),
     authenticatorSelection: {
       residentKey: 'preferred',
       userVerification: 'preferred',
@@ -86,9 +84,7 @@ export async function createAuthenticationOptions(credentialIds: string[]) {
   const config = getConfig()
   const options = await generateAuthenticationOptions({
     rpID: config.rpID,
-    allowCredentials: credentialIds.map(id => ({
-      id: Buffer.from(id, 'base64url'),
-    })),
+    allowCredentials: credentialIds.map(id => ({ id })),
     userVerification: 'preferred',
   })
   storeChallenge(`auth:global`, options.challenge)
@@ -111,7 +107,7 @@ export async function verifyAuthentication(
     expectedRPID: config.rpID,
     credential: {
       id: response.id,
-      publicKey: Buffer.from(credentialPublicKey, 'base64url'),
+      publicKey: new Uint8Array(Buffer.from(credentialPublicKey, 'base64url')),
       counter: credentialCounter,
     },
   })
