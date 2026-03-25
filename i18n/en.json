@@ -791,6 +791,7 @@
     "daysUntilDrop": "Days Left",
     "estimatedValue": "Est. Value",
     "auctionPrice": "Auction Price",
+    "catchCost": "Catch Cost",
     "status": "Status",
     "addToWatchlist": "Watch",
     "removeFromWatchlist": "Unwatch",

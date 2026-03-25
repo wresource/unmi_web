@@ -476,7 +476,7 @@ onMounted(async () => {
                 <th class="text-center px-3 py-3 font-medium text-gray-600 hidden sm:table-cell">{{ t('dropcatch.length') }}</th>
                 <th class="text-center px-3 py-3 font-medium text-gray-600 hidden md:table-cell">{{ t('dropcatch.dropDate') }}</th>
                 <th class="text-center px-3 py-3 font-medium text-gray-600">{{ t('dropcatch.daysUntilDrop') }}</th>
-                <th class="text-right px-3 py-3 font-medium text-gray-600 hidden sm:table-cell">{{ t('dropcatch.auctionPrice') }}</th>
+                <th class="text-right px-3 py-3 font-medium text-gray-600 hidden sm:table-cell">{{ t('dropcatch.catchCost') }}</th>
                 <th class="text-right px-3 py-3 font-medium text-gray-600 hidden md:table-cell">{{ t('dropcatch.estimatedValue') }}</th>
                 <th class="text-center px-3 py-3 font-medium text-gray-600 hidden lg:table-cell">{{ t('dropcatch.status') }}</th>
                 <th class="text-right px-4 py-3 font-medium text-gray-600">{{ t('common.operations') }}</th>
@@ -498,7 +498,7 @@ onMounted(async () => {
                   </span>
                 </td>
                 <td class="text-right px-3 py-3 hidden sm:table-cell">
-                  <span class="font-bold text-blue-600">{{ formatValue(d.auction_price) }}</span>
+                  <span class="font-bold text-blue-600">{{ d.auction_price ? '$' + d.auction_price : '-' }}</span>
                 </td>
                 <td class="text-right px-3 py-3 hidden md:table-cell">
                   <span class="text-gray-500 text-sm">{{ formatValue(d.estimated_value) }}</span>

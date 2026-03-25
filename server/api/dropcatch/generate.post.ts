@@ -1,6 +1,6 @@
 import { defineEventHandler, createError, readBody } from 'h3'
 import { getAccountId } from '~/server/utils/account'
-import { fetchRealDropDomains, markRefreshed } from '~/server/utils/dropcatch'
+import { fetchRealDropDomains, markRefreshed, updateAuctionPrices } from '~/server/utils/dropcatch'
 import { appraiseDomain } from '~/server/utils/appraisal'
 import { useDatabase } from '~/server/database'
 
@@ -42,23 +42,9 @@ export default defineEventHandler(async (event) => {
           const tld = '.' + parts.slice(1).join('.')
           const sld = parts[0]
           const len = sld.length
-          // Auction price: ~15% of estimated value with minimums by length/tld
-          let auctionPrice = Math.round(appraisal.estimatedValue * 0.15)
-          if (tld === '.com') {
-            if (len <= 2) auctionPrice = Math.max(auctionPrice, 5000)
-            else if (len === 3) auctionPrice = Math.max(auctionPrice, 500)
-            else if (len === 4) auctionPrice = Math.max(auctionPrice, 100)
-            else auctionPrice = Math.max(auctionPrice, 30)
-          } else {
-            if (len <= 3) auctionPrice = Math.max(auctionPrice, 200)
-            else auctionPrice = Math.max(auctionPrice, 20)
-          }
-          if (auctionPrice >= 1000) auctionPrice = Math.round(auctionPrice / 100) * 100
-          else if (auctionPrice >= 100) auctionPrice = Math.round(auctionPrice / 10) * 10
-
           db.prepare(
-            'UPDATE drop_domains SET estimated_value = ?, auction_price = ? WHERE id = ?'
-          ).run(appraisal.estimatedValue, auctionPrice, d.id)
+            'UPDATE drop_domains SET estimated_value = ? WHERE id = ?'
+          ).run(appraisal.estimatedValue, d.id)
           appraised++
         } catch {
           // Skip domains that fail appraisal
@@ -69,5 +55,13 @@ export default defineEventHandler(async (event) => {
     }
   }
 
-  return { imported, appraised }
+  // Update auction_price with real registration prices from nazhumi.com
+  let priced = 0
+  try {
+    priced = await updateAuctionPrices()
+  } catch (err) {
+    console.warn('[dropcatch] Price update failed:', (err as Error).message)
+  }
+
+  return { imported, appraised, priced }
 })

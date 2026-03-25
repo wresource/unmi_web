@@ -619,34 +619,85 @@ export async function fetchRealDropDomains(options?: {
  * Import drop domains into the database (upsert).
  * Only imports pure-letter domains with length 1-5.
  */
+// ============================================================================
+// Real registration/catch price lookup via nazhumi.com API
+// ============================================================================
+
+// Cache TLD registration prices (refreshed hourly)
+const regPriceCache = new Map<string, { price: number; currency: string; registrar: string; cachedAt: number }>()
+const REG_PRICE_CACHE_TTL = 60 * 60 * 1000 // 1 hour
+
 /**
- * Calculate a realistic auction/catch price based on domain properties.
- * This estimates what the domain would typically go for at auction.
+ * Get the real cheapest registration price for a TLD from nazhumi.com API.
+ * This is the actual cost to register/catch the domain.
  */
-function calculateAuctionPrice(domainName: string, tld: string, estimatedValue: number): number {
-  const sld = domainName.split('.')[0]
-  const len = sld.length
-
-  // Base: auction prices are typically 10-30% of estimated value
-  let price = Math.round(estimatedValue * 0.15)
-
-  // Adjust by TLD
-  if (tld === '.com') {
-    // .com auction prices are higher
-    if (len <= 2) price = Math.max(price, 5000)
-    else if (len === 3) price = Math.max(price, 500)
-    else if (len === 4) price = Math.max(price, 100)
-    else price = Math.max(price, 30)
-  } else if (tld === '.net' || tld === '.org') {
-    if (len <= 3) price = Math.max(price, 200)
-    else price = Math.max(price, 20)
+async function getRegistrationPrice(tld: string): Promise<{ price: number; currency: string; registrar: string }> {
+  const cleanTld = tld.replace(/^\./, '')
+  const cached = regPriceCache.get(cleanTld)
+  if (cached && Date.now() - cached.cachedAt < REG_PRICE_CACHE_TTL) {
+    return { price: cached.price, currency: cached.currency, registrar: cached.registrar }
   }
 
-  // Round to nice numbers
-  if (price >= 1000) price = Math.round(price / 100) * 100
-  else if (price >= 100) price = Math.round(price / 10) * 10
+  try {
+    const res = await fetch(`https://www.nazhumi.com/api/v1?domain=${cleanTld}&order=new`, {
+      headers: { 'User-Agent': 'DomainManager/1.0' },
+      signal: AbortSignal.timeout(8000),
+    })
+    if (!res.ok) throw new Error('API error')
 
-  return price
+    const data = await res.json() as any
+    if (data.code === 100 && data.data?.price?.length) {
+      const cheapest = data.data.price[0]
+      const result = {
+        price: cheapest.new || 0,
+        currency: (cheapest.currency || 'usd').toLowerCase(),
+        registrar: cheapest.registrarname || '',
+      }
+      regPriceCache.set(cleanTld, { ...result, cachedAt: Date.now() })
+      return result
+    }
+  } catch { /* ignore */ }
+
+  // Fallback prices if API fails
+  const fallbacks: Record<string, number> = { com: 9, net: 10, org: 9 }
+  return { price: fallbacks[cleanTld] || 12, currency: 'usd', registrar: '' }
+}
+
+/**
+ * Batch-fetch registration prices for multiple TLDs and update drop_domains.
+ */
+export async function updateAuctionPrices(): Promise<number> {
+  const db = useDatabase()
+  const tlds = db.prepare("SELECT DISTINCT tld FROM drop_domains").all() as { tld: string }[]
+
+  let updated = 0
+  for (const { tld } of tlds) {
+    const regPrice = await getRegistrationPrice(tld)
+    // Convert USD to cents for consistency, store as integer
+    const priceUsd = Math.round(regPrice.price * 100) / 100
+
+    // DropCatch/backorder services charge $10-$69 for .com on top of registration
+    // Use registration price as base, add platform fee estimate
+    let catchPrice: number
+    const cleanTld = tld.replace(/^\./, '')
+    if (cleanTld === 'com') {
+      // .com drop catch typically costs $10-69 via services like DropCatch, SnapNames
+      // Use cheapest registration + $10 backorder fee as minimum
+      catchPrice = priceUsd + 10
+    } else if (cleanTld === 'net' || cleanTld === 'org') {
+      catchPrice = priceUsd + 5
+    } else {
+      catchPrice = priceUsd + 3
+    }
+
+    // Update all domains of this TLD
+    const result = db.prepare(
+      "UPDATE drop_domains SET auction_price = ? WHERE tld = ?"
+    ).run(Math.round(catchPrice * 100) / 100, tld)
+    updated += result.changes
+  }
+
+  return updated
 }
 
 export function importDropDomains(domains: any[]): number {
@@ -667,12 +718,11 @@ export function importDropDomains(domains: any[]): number {
       if (analysis.length > 5) continue
 
       const estValue = d.estimated_value || 0
-      const auctionPrice = d.auction_price || calculateAuctionPrice(d.domain_name, d.tld || analysis.tld, estValue)
 
       stmt.run(
         d.domain_name, d.tld || analysis.tld, d.drop_date || '',
         d.status || 'pending_delete', d.source || 'rdap',
-        estValue, auctionPrice, analysis.length,
+        estValue, d.auction_price || 0, analysis.length,
         analysis.hasNumbers ? 1 : 0, analysis.hasHyphens ? 1 : 0,
         analysis.isPureLetters ? 1 : 0, analysis.isPureNumbers ? 1 : 0
       )
