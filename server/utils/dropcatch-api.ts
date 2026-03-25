@@ -184,45 +184,73 @@ export async function fetchAllAuctionsCsv(options?: {
 }
 
 /**
- * Fetch auction prices for specific domains via the /v2/auctions API.
- * Since the API only returns 100/type, we use it to enrich CSV data with prices.
+ * Fetch auction prices via /v2/auctions API with smart filter combinations.
+ * Each API call returns max 100 results, so we make multiple calls with
+ * different filter combos (type × tld × time window) for maximum coverage.
+ *
+ * This gives us real-time prices and bidder counts for ~1000+ domains.
  */
 export async function fetchAuctionPrices(options?: {
   tlds?: string[]
-}): Promise<Map<string, { price: number; bidders: number }>> {
+}): Promise<Map<string, { price: number; bidders: number; endTime: string }>> {
   const token = await getToken()
   if (!token) return new Map()
 
   const tlds = (options?.tlds || ['com', 'net', 'org']).map(t => t.replace(/^\./, ''))
-  const priceMap = new Map<string, { price: number; bidders: number }>()
+  const priceMap = new Map<string, { price: number; bidders: number; endTime: string }>()
+  const types = ['Dropped', 'PrivateSeller', 'PreRelease']
 
-  for (const auctionType of ['Dropped', 'PrivateSeller', 'PreRelease']) {
-    try {
-      const params = new URLSearchParams({
-        size: '100',
-        showAllActive: 'true',
-      })
-      params.append('Types', auctionType)
-      for (const tld of tlds) params.append('Tlds', tld)
+  // Strategy: query each type × tld × time window for max coverage
+  // Each combo returns up to 100, so 3 types × 3 tlds × 4 windows = 36 API calls ≈ 3600 results
+  const now = new Date()
+  const timeWindows = [
+    { min: '', max: new Date(now.getTime() + 1 * 86400000).toISOString() },  // next 1 day
+    { min: new Date(now.getTime() + 1 * 86400000).toISOString(), max: new Date(now.getTime() + 3 * 86400000).toISOString() },
+    { min: new Date(now.getTime() + 3 * 86400000).toISOString(), max: new Date(now.getTime() + 7 * 86400000).toISOString() },
+    { min: new Date(now.getTime() + 7 * 86400000).toISOString(), max: '' },  // 7+ days
+  ]
 
-      const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
-        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
-        signal: AbortSignal.timeout(15000),
-      })
-      if (!res.ok) continue
-
-      const data = await res.json() as any
-      for (const item of (data.items || [])) {
-        const name = (item.name || '').toLowerCase()
-        if (item.highBid > 0) {
-          priceMap.set(name, {
-            price: item.highBid,
-            bidders: item.numberOfBidders || 0,
+  let apiCalls = 0
+  for (const auctionType of types) {
+    for (const tld of tlds) {
+      for (const window of timeWindows) {
+        try {
+          const params = new URLSearchParams({
+            size: '100',
+            showAllActive: 'true',
           })
-        }
+          params.append('Types', auctionType)
+          params.append('Tlds', tld)
+          if (window.max) params.set('EndTime.Max', window.max)
+          if (window.min) params.set('EndTime.Min', window.min)
+
+          const res = await fetch(`${API_BASE}/v2/auctions?${params}`, {
+            headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+            signal: AbortSignal.timeout(10000),
+          })
+          apiCalls++
+          if (!res.ok) continue
+
+          const data = await res.json() as any
+          for (const item of (data.items || [])) {
+            const name = (item.name || '').toLowerCase()
+            const existing = priceMap.get(name)
+            // Keep the entry with the highest bid (most up-to-date)
+            if (!existing || (item.highBid || 0) > existing.price) {
+              priceMap.set(name, {
+                price: item.highBid || 0,
+                bidders: item.numberOfBidders || 0,
+                endTime: item.endTime || '',
+              })
+            }
+          }
+
+          await new Promise(r => setTimeout(r, 50)) // brief delay
+        } catch {}
       }
-    } catch {}
+    }
   }
 
+  console.log(`[dropcatch-api] Price enrichment: ${apiCalls} API calls, ${priceMap.size} domains with prices`)
   return priceMap
 }

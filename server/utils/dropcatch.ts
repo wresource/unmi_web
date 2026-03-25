@@ -99,14 +99,15 @@ export async function fetchDropDomains(options?: {
       tlds: tlds.map(t => t.replace(/^\./, '')),
     })
 
-    // Build final dataset
+    // Build final dataset: CSV provides full list, API provides prices + accurate end times
     const merged = new Map<string, any>()
     for (const d of csvDomains) {
       const prices = priceMap.get(d.domain_name)
       merged.set(d.domain_name, {
         domain_name: d.domain_name,
         tld: d.tld,
-        drop_date: d.end_time,
+        // API endTime is more accurate (has exact timestamp), CSV only has date
+        drop_date: prices?.endTime || d.end_time,
         status: d.auction_type === 'PreRelease' ? 'pre_release' : d.auction_type === 'PrivateSeller' ? 'private_seller' : 'dropped',
         source: 'dropcatch',
         registrar: prices?.bidders ? `${prices.bidders} bidders` : '',
