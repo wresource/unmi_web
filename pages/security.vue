@@ -38,6 +38,8 @@ const showAddPasskey = ref(false)
 const passkeyName = ref('')
 const passkeyRegistering = ref(false)
 const webAuthnSupported = ref(false)
+const editingPasskeyId = ref<number | null>(null)
+const editPasskeyName = ref('')
 
 const currentDeviceId = ref('')
 
@@ -290,6 +292,25 @@ async function removePasskey(id: number) {
   }
 }
 
+function startRenamePasskey(pk: any) {
+  editingPasskeyId.value = pk.id
+  editPasskeyName.value = pk.device_name || ''
+}
+
+async function savePasskeyName(id: number) {
+  try {
+    await $fetch(`/api/auth/passkey/${id}`, {
+      method: 'PUT',
+      body: { deviceName: editPasskeyName.value.trim() },
+    })
+    editingPasskeyId.value = null
+    await fetchPasskeys()
+    toast.success(t('common.saved'))
+  } catch (e: any) {
+    toast.error(e?.data?.statusMessage || t('common.failed'))
+  }
+}
+
 function truncateUA(ua: string, len = 60) {
   return ua && ua.length > len ? ua.substring(0, len) + '...' : ua
 }
@@ -504,28 +525,53 @@ function formatDate(d: string | null) {
           <div
             v-for="pk in passkeys"
             :key="pk.id"
-            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 border border-gray-100"
+            class="p-4 rounded-lg bg-gray-50 border border-gray-100"
           >
-            <div class="flex items-center gap-3 min-w-0">
-              <div class="flex items-center justify-center w-8 h-8 rounded-full bg-amber-100 shrink-0">
-                <Icon name="material-symbols:passkey" class="w-4 h-4 text-amber-700" />
+            <div class="flex items-start justify-between gap-3">
+              <div class="flex items-start gap-3 min-w-0">
+                <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-amber-50 border border-amber-100 shrink-0 mt-0.5">
+                  <Icon name="material-symbols:passkey" class="w-5 h-5 text-amber-600" />
+                </div>
+                <div class="min-w-0 flex-1">
+                  <!-- Name: editable or display -->
+                  <div v-if="editingPasskeyId === pk.id" class="flex items-center gap-2 mb-1">
+                    <input
+                      v-model="editPasskeyName"
+                      type="text"
+                      class="h-7 px-2 text-sm border border-blue-300 rounded-md bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 w-48"
+                      @keydown.enter="savePasskeyName(pk.id)"
+                      @keydown.escape="editingPasskeyId = null"
+                    />
+                    <button class="text-xs text-blue-600 hover:text-blue-800" @click="savePasskeyName(pk.id)">{{ t('common.save') }}</button>
+                    <button class="text-xs text-gray-400 hover:text-gray-600" @click="editingPasskeyId = null">{{ t('common.cancel') }}</button>
+                  </div>
+                  <div v-else class="flex items-center gap-2 mb-1">
+                    <span class="text-sm font-semibold text-gray-900">{{ pk.device_name || 'Passkey' }}</span>
+                    <button
+                      class="text-gray-300 hover:text-blue-500 transition-colors"
+                      :title="t('common.edit')"
+                      @click="startRenamePasskey(pk)"
+                    >
+                      <Icon name="material-symbols:edit" class="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                  <!-- Credential ID (truncated) -->
+                  <p class="text-xs text-gray-400 font-mono mb-1">ID: {{ (pk.credential_id || '').substring(0, 12) }}...</p>
+                  <!-- Times -->
+                  <div class="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-gray-400">
+                    <span v-if="pk.last_used_at">{{ t('security.passkey.lastUsed') }}: {{ formatDate(pk.last_used_at) }}</span>
+                    <span v-else>{{ t('security.passkey.lastUsed') }}: {{ t('common.no') }}</span>
+                    <span v-if="pk.created_at">{{ t('security.device.registered') }}: {{ formatDate(pk.created_at) }}</span>
+                  </div>
+                </div>
               </div>
-              <div class="min-w-0">
-                <span class="text-sm font-medium text-gray-800">{{ pk.name || 'Passkey' }}</span>
-                <p class="text-xs text-gray-400">
-                  {{ t('security.passkey.lastUsed') }}: {{ formatDate(pk.lastUsed || pk.last_used) }}
-                </p>
-                <p class="text-xs text-gray-400">
-                  {{ formatDate(pk.createdAt || pk.created_at) }}
-                </p>
-              </div>
+              <button
+                class="shrink-0 text-xs text-red-400 hover:text-red-600 transition-colors px-2 py-1 rounded hover:bg-red-50"
+                @click="removePasskey(pk.id)"
+              >
+                {{ t('security.passkey.remove') }}
+              </button>
             </div>
-            <button
-              class="shrink-0 text-xs text-red-500 hover:text-red-700 transition-colors px-2 py-1"
-              @click="removePasskey(pk.id)"
-            >
-              {{ t('security.passkey.remove') }}
-            </button>
           </div>
 
           <!-- Add Passkey -->
