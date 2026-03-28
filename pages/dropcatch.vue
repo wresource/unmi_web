@@ -169,7 +169,7 @@ function urgencyClass(d: any): string {
 
 // Navigate to WHOIS page
 function goToWhois(domainName: string) {
-  window.open(`/whois?domain=${encodeURIComponent(domainName)}`, '_blank')
+  navigateTo(`/whois?domain=${encodeURIComponent(domainName)}`)
 }
 
 // Copy domain
