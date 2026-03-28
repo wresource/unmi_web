@@ -33,8 +33,7 @@ export default defineEventHandler(async (event) => {
   const allowedSort = ['domain_name', 'drop_date', 'estimated_value', 'domain_length', 'auction_price', 'created_at']
   const safeSortBy = allowedSort.includes(sortBy) ? sortBy : 'drop_date'
 
-  // Exclude expired auctions by default (ended more than 1 hour ago)
-  const conditions: string[] = ["(drop_date = '' OR drop_date >= datetime('now', '-1 hour'))"]
+  const conditions: string[] = []
   const params: any[] = []
 
   if (search) {

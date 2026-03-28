@@ -88,15 +88,6 @@ export async function fetchDropDomains(options?: {
   try {
     const tlds = options?.tlds || ['.com', '.net', '.org']
 
-    // Clean up expired auctions (ended more than 1 hour ago)
-    const db = useDatabase()
-    const cleaned = db.prepare(
-      "DELETE FROM drop_domains WHERE drop_date != '' AND drop_date < datetime('now', '-1 hour')"
-    ).run()
-    if (cleaned.changes > 0) {
-      console.log(`[dropcatch] Cleaned ${cleaned.changes} expired domains`)
-    }
-
     // Step 1: Download the FULL dataset via AllAuctions CSV
     // This contains ALL domains (27,000+), unlike the API which caps at 100/type
     const csvDomains = await fetchAllAuctionsCsv({
@@ -127,7 +118,16 @@ export async function fetchDropDomains(options?: {
     console.log(`[dropcatch] CSV: ${csvDomains.length} domains, prices enriched: ${priceMap.size}, merged: ${merged.size}`)
 
     if (merged.size > 0) {
-      return importDropDomains(Array.from(merged.values()))
+      // Delete ALL old data first, then import fresh dataset
+      // This ensures we don't show stale/ended auctions
+      const db = useDatabase()
+      const beforeCount = (db.prepare('SELECT count(*) as c FROM drop_domains').get() as any).c
+      db.prepare('DELETE FROM drop_domains').run()
+
+      const imported = importDropDomains(Array.from(merged.values()))
+      console.log(`[dropcatch] Replaced ${beforeCount} → ${imported} domains`)
+
+      return imported
     }
 
     return 0
