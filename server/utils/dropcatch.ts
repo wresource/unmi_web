@@ -88,6 +88,15 @@ export async function fetchDropDomains(options?: {
   try {
     const tlds = options?.tlds || ['.com', '.net', '.org']
 
+    // Clean up expired auctions (ended more than 1 hour ago)
+    const db = useDatabase()
+    const cleaned = db.prepare(
+      "DELETE FROM drop_domains WHERE drop_date != '' AND drop_date < datetime('now', '-1 hour')"
+    ).run()
+    if (cleaned.changes > 0) {
+      console.log(`[dropcatch] Cleaned ${cleaned.changes} expired domains`)
+    }
+
     // Step 1: Download the FULL dataset via AllAuctions CSV
     // This contains ALL domains (27,000+), unlike the API which caps at 100/type
     const csvDomains = await fetchAllAuctionsCsv({

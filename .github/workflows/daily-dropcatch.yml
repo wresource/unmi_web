@@ -1,0 +1,45 @@
+name: Daily DropCatch Update
+
+on:
+  schedule:
+    # Run at 18:00 UTC daily (2:00 AM CST / UTC+8)
+    - cron: '0 18 * * *'
+  workflow_dispatch: # Allow manual trigger
+
+jobs:
+  update-dropcatch:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Trigger DropCatch data refresh
+        env:
+          SERVER_URL: ${{ secrets.SERVER_URL }}
+          AUTH_ACCOUNT_ID: ${{ secrets.AUTH_ACCOUNT_ID }}
+        run: |
+          if [ -z "$SERVER_URL" ]; then
+            echo "SERVER_URL secret not set. Set it to your server API URL (e.g., https://beta.unmi.io)"
+            exit 1
+          fi
+
+          echo "=== Triggering DropCatch data refresh ==="
+          echo "Server: $SERVER_URL"
+          echo "Time: $(date -u '+%Y-%m-%d %H:%M UTC')"
+
+          RESULT=$(curl -s -X POST \
+            "${SERVER_URL}/api/dropcatch/generate" \
+            -H "Content-Type: application/json" \
+            -H "x-account-id: ${AUTH_ACCOUNT_ID:-1}" \
+            --max-time 120 \
+            -d '{"tlds":[".com",".net",".org"]}')
+
+          echo "Response: $RESULT"
+
+          # Check if successful
+          if echo "$RESULT" | grep -q '"imported"'; then
+            IMPORTED=$(echo "$RESULT" | python3 -c "import sys,json;print(json.load(sys.stdin).get('imported',0))" 2>/dev/null)
+            echo "✅ Successfully imported $IMPORTED domains"
+          else
+            echo "❌ Update failed"
+            exit 1
+          fi
