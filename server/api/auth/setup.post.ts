@@ -1,5 +1,6 @@
 import { defineEventHandler, readBody, createError } from 'h3'
 import bcrypt from 'bcryptjs'
+import { randomBytes } from 'crypto'
 import { useDatabase } from '~/server/database'
 import { registerAccountKey } from '~/server/utils/keystore'
 
@@ -32,6 +33,10 @@ export default defineEventHandler(async (event) => {
   const result = db.prepare(
     "INSERT INTO accounts (name, password_hash, created_at) VALUES (?, ?, datetime('now'))"
   ).run(accountName, passwordHash)
+
+  // Generate unique verification token for this account
+  const verifyToken = `unmi-verify=${randomBytes(16).toString('hex')}`
+  db.prepare("UPDATE accounts SET verify_token = ? WHERE id = ?").run(verifyToken, result.lastInsertRowid)
 
   // Register encryption key for this session
   registerAccountKey(Number(result.lastInsertRowid), passwordHash)

@@ -18,6 +18,7 @@ export default defineEventHandler(async (event) => {
   const db = useDatabase()
   const conditions: string[] = [
     'd.is_public = 1',
+    'd.is_verified = 1',
     'a.is_public = 1',
     "a.name != ''",
   ]

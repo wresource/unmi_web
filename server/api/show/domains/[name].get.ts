@@ -19,7 +19,7 @@ export default defineEventHandler(async (event) => {
     FROM domains d
     JOIN accounts a ON a.id = d.account_id
     LEFT JOIN show_categories sc ON sc.id = d.show_category_id
-    WHERE d.domain_name = ? AND d.is_public = 1 AND a.is_public = 1 AND a.name != ''
+    WHERE d.domain_name = ? AND d.is_public = 1 AND d.is_verified = 1 AND a.is_public = 1 AND a.name != ''
   `).get(name.toLowerCase()) as any
 
   if (!domain) {
@@ -51,7 +51,7 @@ export default defineEventHandler(async (event) => {
       d.is_featured, d.view_count, d.show_category_id
     FROM domains d
     JOIN accounts a ON a.id = d.account_id
-    WHERE d.is_public = 1 AND a.is_public = 1 AND a.name != ''
+    WHERE d.is_public = 1 AND d.is_verified = 1 AND a.is_public = 1 AND a.name != ''
       AND d.domain_name != ?
       AND (d.show_category_id = ? OR d.tld = ?)
     ORDER BY d.is_featured DESC, d.view_count DESC

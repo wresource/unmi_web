@@ -263,6 +263,25 @@
       "pending_delete": "待删除",
       "redemption": "赎回期",
       "reserved": "保留"
+    },
+
+    "verification": {
+      "title": "域名归属验证",
+      "verified": "已验证",
+      "unverified": "未验证",
+      "verifiedAt": "验证时间",
+      "token": "验证令牌",
+      "instructions": "请在域名 DNS 中添加以下 TXT 记录以验证归属",
+      "recordHost": "记录主机",
+      "recordType": "记录类型",
+      "recordValue": "记录值",
+      "verifyNow": "立即验证",
+      "verifying": "验证中...",
+      "verifySuccess": "域名验证成功",
+      "verifyFailed": "验证失败 - 未找到匹配的 TXT 记录",
+      "dnsNotFound": "DNS 记录未找到，请确认 TXT 记录已生效",
+      "onlyVerifiedPublic": "仅验证通过的域名可公开展示",
+      "copyToken": "复制令牌"
     }
   },
 

@@ -416,6 +416,12 @@ watch([inquiriesPage, inquiryStatusFilter], () => {
             </div>
           </div>
 
+          <!-- Verification note -->
+          <p class="text-xs text-amber-600 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mb-4">
+            <Icon name="heroicons:exclamation-triangle" class="w-3.5 h-3.5 inline-block mr-1" />
+            {{ t('domains.verification.onlyVerifiedPublic') }}
+          </p>
+
           <!-- Table -->
           <div class="overflow-x-auto -mx-6 px-6">
             <div v-if="domainsLoading" class="flex justify-center py-12">
@@ -433,6 +439,7 @@ watch([inquiriesPage, inquiryStatusFilter], () => {
                     />
                   </th>
                   <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('domains.domainName') }}</th>
+                  <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('domains.verification.verified') }}</th>
                   <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('showcase.public') }}</th>
                   <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('showcase.featured') }}</th>
                   <th class="py-2 px-2 text-left font-medium text-gray-500">{{ t('showcase.price') }}</th>
@@ -456,6 +463,16 @@ watch([inquiriesPage, inquiryStatusFilter], () => {
                   </td>
                   <td class="py-2.5 px-2 font-medium text-gray-900 whitespace-nowrap">
                     {{ domain.domain_name }}
+                  </td>
+                  <td class="py-2.5 px-2">
+                    <span v-if="domain.is_verified" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                      <Icon name="material-symbols:verified" class="w-3.5 h-3.5" />
+                      {{ t('domains.verification.verified') }}
+                    </span>
+                    <span v-else class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+                      <Icon name="heroicons:exclamation-triangle" class="w-3.5 h-3.5" />
+                      {{ t('domains.verification.unverified') }}
+                    </span>
                   </td>
                   <td class="py-2.5 px-2">
                     <button

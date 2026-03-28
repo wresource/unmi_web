@@ -263,6 +263,25 @@
       "pending_delete": "Pending Delete",
       "redemption": "Redemption",
       "reserved": "Reserved"
+    },
+
+    "verification": {
+      "title": "Domain Ownership Verification",
+      "verified": "Verified",
+      "unverified": "Not Verified",
+      "verifiedAt": "Verified at",
+      "token": "Verification Token",
+      "instructions": "Add the following TXT record to verify ownership",
+      "recordHost": "Record Host",
+      "recordType": "Record Type",
+      "recordValue": "Record Value",
+      "verifyNow": "Verify Now",
+      "verifying": "Verifying...",
+      "verifySuccess": "Domain verified successfully",
+      "verifyFailed": "Verification failed - no matching TXT record found",
+      "dnsNotFound": "DNS record not found, please ensure TXT record is active",
+      "onlyVerifiedPublic": "Only verified domains can be displayed publicly",
+      "copyToken": "Copy Token"
     }
   },
 

@@ -526,12 +526,15 @@ onMounted(() => {
                 />
               </td>
               <td class="px-4 py-3">
-                <NuxtLink
-                  :to="`/domains/${domain.id}`"
-                  class="text-primary-600 hover:text-primary-800 font-medium"
-                >
-                  {{ domain.domain_name }}
-                </NuxtLink>
+                <div class="flex items-center gap-1.5">
+                  <NuxtLink
+                    :to="`/domains/${domain.id}`"
+                    class="text-primary-600 hover:text-primary-800 font-medium"
+                  >
+                    {{ domain.domain_name }}
+                  </NuxtLink>
+                  <Icon v-if="domain.is_verified" name="material-symbols:verified" class="w-4 h-4 text-blue-500 shrink-0" :title="t('domains.verification.verified')" />
+                </div>
               </td>
               <td class="px-4 py-3 text-gray-600">{{ domain.registrar || '--' }}</td>
               <td class="px-4 py-3 text-gray-600 whitespace-nowrap">{{ formatDate(domain.expiry_date) }}</td>

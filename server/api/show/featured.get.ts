@@ -12,7 +12,7 @@ export default defineEventHandler(async () => {
     FROM domains d
     JOIN accounts a ON a.id = d.account_id
     LEFT JOIN show_categories sc ON sc.id = d.show_category_id
-    WHERE d.is_featured = 1 AND d.is_public = 1 AND a.is_public = 1 AND a.name != ''
+    WHERE d.is_featured = 1 AND d.is_public = 1 AND d.is_verified = 1 AND a.is_public = 1 AND a.name != ''
     ORDER BY d.view_count DESC
     LIMIT 12
   `).all()

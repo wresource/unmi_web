@@ -19,6 +19,48 @@ const whoisData = ref<any>(null)
 const showDeleteRenewalDialog = ref(false)
 const deletingRenewalId = ref<number | null>(null)
 
+// Verification
+const verifyToken = ref('')
+const verifyLoading = ref(false)
+const verifyResult = ref<any>(null)
+
+async function fetchVerifyToken() {
+  try {
+    const res = await $fetch<any>('/api/domains/verify-token')
+    verifyToken.value = res.token || ''
+  } catch {}
+}
+
+async function verifyDomain() {
+  if (!domain.value) return
+  verifyLoading.value = true
+  verifyResult.value = null
+  try {
+    const res = await $fetch<any>('/api/domains/verify', {
+      method: 'POST',
+      body: { domainId: domain.value.id },
+    })
+    verifyResult.value = res
+    if (res.verified) {
+      toast.success(t('domains.verification.verifySuccess'))
+      await fetchDomain()
+    } else {
+      toast.error(res.error || t('domains.verification.verifyFailed'))
+    }
+  } catch (err: any) {
+    toast.error(t('domains.verification.verifyFailed'))
+  } finally {
+    verifyLoading.value = false
+  }
+}
+
+function copyToken() {
+  if (verifyToken.value) {
+    navigator.clipboard.writeText(verifyToken.value)
+    toast.success(t('common.copied'))
+  }
+}
+
 // Renewal form
 const renewalForm = reactive({
   renewal_date: '',
@@ -149,6 +191,7 @@ const dailyCost = computed(() => {
 
 onMounted(() => {
   fetchDomain()
+  fetchVerifyToken()
 })
 </script>
 
@@ -400,6 +443,86 @@ onMounted(() => {
             <dd class="text-sm font-medium text-gray-900">{{ domain.tech_email }}</dd>
           </div>
         </dl>
+      </div>
+
+      <!-- Domain Verification -->
+      <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+        <h2 class="text-base font-semibold text-gray-900 mb-4 flex items-center gap-2">
+          <Icon name="material-symbols:verified" class="w-5 h-5 text-gray-400" />
+          {{ t('domains.verification.title') }}
+        </h2>
+
+        <!-- Status -->
+        <div class="flex items-center gap-2 mb-4">
+          <span v-if="domain.is_verified" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700">
+            <Icon name="material-symbols:verified" class="w-3.5 h-3.5" />
+            {{ t('domains.verification.verified') }}
+          </span>
+          <span v-else class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-yellow-100 text-yellow-700">
+            <Icon name="heroicons:exclamation-triangle" class="w-3.5 h-3.5" />
+            {{ t('domains.verification.unverified') }}
+          </span>
+          <span v-if="domain.is_verified && domain.verified_at" class="text-xs text-gray-500">
+            {{ t('domains.verification.verifiedAt') }}: {{ formatDate(domain.verified_at) }}
+          </span>
+        </div>
+
+        <!-- Instructions -->
+        <div v-if="!domain.is_verified" class="space-y-4">
+          <p class="text-sm text-gray-600">{{ t('domains.verification.instructions') }}</p>
+
+          <div class="bg-gray-50 rounded-lg p-4 space-y-3">
+            <div class="flex items-center justify-between">
+              <div>
+                <span class="text-xs font-medium text-gray-500 block">{{ t('domains.verification.recordHost') }}</span>
+                <code class="text-sm text-gray-900 font-mono">_unmi-verify.{{ domain.domain_name }}</code>
+              </div>
+            </div>
+            <div>
+              <span class="text-xs font-medium text-gray-500 block">{{ t('domains.verification.recordType') }}</span>
+              <code class="text-sm text-gray-900 font-mono">TXT</code>
+            </div>
+            <div>
+              <span class="text-xs font-medium text-gray-500 block">{{ t('domains.verification.recordValue') }}</span>
+              <div class="flex items-center gap-2">
+                <code class="text-sm text-gray-900 font-mono break-all">{{ verifyToken }}</code>
+                <button
+                  class="shrink-0 p-1.5 text-gray-400 hover:text-primary-600 rounded-md hover:bg-gray-100 transition-colors"
+                  :title="t('domains.verification.copyToken')"
+                  @click="copyToken"
+                >
+                  <Icon name="heroicons:clipboard-document" class="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <!-- Verify button -->
+          <button
+            class="px-4 py-2 text-sm font-medium text-white bg-primary-600 rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50"
+            :disabled="verifyLoading"
+            @click="verifyDomain"
+          >
+            <span class="flex items-center gap-1.5">
+              <Icon v-if="verifyLoading" name="heroicons:arrow-path" class="w-4 h-4 animate-spin" />
+              <Icon v-else name="material-symbols:verified" class="w-4 h-4" />
+              {{ verifyLoading ? t('domains.verification.verifying') : t('domains.verification.verifyNow') }}
+            </span>
+          </button>
+
+          <!-- Result -->
+          <div v-if="verifyResult && !verifyResult.verified" class="bg-red-50 border border-red-200 rounded-lg p-4">
+            <p class="text-sm text-red-700 font-medium">
+              {{ verifyResult.error || t('domains.verification.verifyFailed') }}
+            </p>
+            <p v-if="verifyResult.found && verifyResult.found.length > 0" class="text-xs text-red-600 mt-1">
+              Found: {{ verifyResult.found.join(', ') }}
+            </p>
+            <p v-else class="text-xs text-red-600 mt-1">
+              {{ t('domains.verification.dnsNotFound') }}
+            </p>
+          </div>
+        </div>
       </div>
 
       <!-- Renewal Records -->

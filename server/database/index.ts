@@ -30,6 +30,7 @@ function initDatabase(db: Database.Database) {
       is_public INTEGER DEFAULT 0,
       contact_email TEXT DEFAULT '',
       contact_wechat TEXT DEFAULT '',
+      verify_token TEXT DEFAULT '',
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     );
 
@@ -62,6 +63,8 @@ function initDatabase(db: Database.Database) {
       admin_email TEXT DEFAULT '',
       tech_name TEXT DEFAULT '',
       tech_email TEXT DEFAULT '',
+      is_verified INTEGER DEFAULT 0,
+      verified_at TEXT DEFAULT '',
       is_public INTEGER DEFAULT 0,
       show_price REAL DEFAULT 0,
       price_type TEXT DEFAULT 'inquiry',
@@ -358,6 +361,19 @@ function initDatabase(db: Database.Database) {
     if (!acctCols.some(c => c.name === col)) {
       db.exec(`ALTER TABLE accounts ADD COLUMN ${col} INTEGER DEFAULT 0`)
     }
+  }
+
+  // Migration: add verify_token to accounts
+  if (!acctCols.some(c => c.name === 'verify_token')) {
+    db.exec(`ALTER TABLE accounts ADD COLUMN verify_token TEXT DEFAULT ''`)
+  }
+
+  // Migration: add verification columns to domains
+  if (!domainCols.some(c => c.name === 'is_verified')) {
+    db.exec(`ALTER TABLE domains ADD COLUMN is_verified INTEGER DEFAULT 0`)
+  }
+  if (!domainCols.some(c => c.name === 'verified_at')) {
+    db.exec(`ALTER TABLE domains ADD COLUMN verified_at TEXT DEFAULT ''`)
   }
 
   // Drop old unique constraint on domain_name if it exists (from original schema)
